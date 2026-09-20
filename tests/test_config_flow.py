@@ -4,6 +4,8 @@ from homeassistant import config_entries, data_entry_flow
 from custom_components.geodrops import const
 from custom_components.geodrops.transform import DeviceReading
 
+pytestmark = pytest.mark.usefixtures("mock_setup_entry")
+
 
 def _reading(device_id=1001):
     return DeviceReading(device_id=device_id, sync_delay_hours=1.0, moisture_index=2,
