@@ -14,7 +14,8 @@
         "description": "Enter the serial number shown in the GeoDrops app (for example AAA111) and a friendly name.",
         "data": {
           "serial": "Device serial (mfgSn)",
-          "name": "Friendly name"
+          "name": "Friendly name",
+          "area_id": "Area (optional)"
         }
       }
     },
@@ -34,26 +35,33 @@
         "menu_options": {
           "add_device": "Add a probe",
           "remove_device": "Remove a probe",
-          "settings": "Polling & staleness settings"
+          "settings": "Advanced Options"
         }
       },
       "add_device": {
         "title": "Add a GeoDrops probe",
         "description": "Enter the serial from the GeoDrops app (for example AAA111) and a friendly name.",
-        "data": { "serial": "Device serial (mfgSn)", "name": "Friendly name" }
+        "data": { "serial": "Device serial (mfgSn)", "name": "Friendly name", "area_id": "Area (optional)" }
       },
       "remove_device": {
         "title": "Remove a probe",
         "data": { "device": "Probe to remove" }
       },
       "settings": {
-        "title": "Polling & staleness",
+        "title": "Advanced Options",
         "data": {
           "scan_interval_minutes": "Poll interval (minutes)",
           "lookback_hours": "BigQuery lookback (hours)",
           "staleness_warn_hours": "Warn after (hours)",
           "staleness_skip_hours": "Mark unavailable after (hours)",
           "expire_after_minutes": "Expire after (minutes)"
+        },
+        "data_description": {
+          "scan_interval_minutes": "How often to query BigQuery for new readings. Default 20.",
+          "lookback_hours": "How far back to search for each probe's latest reading on every poll. Default 12.",
+          "staleness_warn_hours": "Log a warning once a probe's data is older than this many hours. Default 6.",
+          "staleness_skip_hours": "Mark a probe's sensors unavailable once its data is older than this many hours. Default 12.",
+          "expire_after_minutes": "Also mark sensors unavailable if the integration has not polled successfully within this many minutes. Default 45."
         }
       }
     },

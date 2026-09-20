@@ -6,7 +6,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.selector import TextSelector, TextSelectorConfig
+from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, AreaSelector
 
 from . import const
 from .bigquery_api import (
@@ -65,19 +65,23 @@ class GeoDropsConfigFlow(config_entries.ConfigFlow, domain=const.DOMAIN):
             if not errors:
                 await self.async_set_unique_id(self._project_id)
                 self._abort_if_unique_id_configured()
+                device = {
+                    const.DEV_SERIAL: serial,
+                    const.DEV_ID: reading.device_id,
+                    const.DEV_NAME: user_input[const.DEV_NAME],
+                }
+                if user_input.get(const.DEV_AREA):
+                    device[const.DEV_AREA] = user_input[const.DEV_AREA]
                 return self.async_create_entry(
                     title="GeoDrops",
                     data={const.CONF_PROJECT_ID: self._project_id,
                           const.CONF_CREDENTIALS_JSON: self._credentials_json},
-                    options={const.CONF_DEVICES: [{
-                        const.DEV_SERIAL: serial,
-                        const.DEV_ID: reading.device_id,
-                        const.DEV_NAME: user_input[const.DEV_NAME],
-                    }]},
+                    options={const.CONF_DEVICES: [device]},
                 )
         schema = vol.Schema({
             vol.Required(const.DEV_SERIAL): str,
             vol.Required(const.DEV_NAME): str,
+            vol.Optional(const.DEV_AREA): AreaSelector(),
         })
         return self.async_show_form(step_id="add_device", data_schema=schema,
                                     errors=errors, description_placeholders=description_placeholders)
@@ -132,11 +136,18 @@ class GeoDropsOptionsFlow(config_entries.OptionsFlow):
                     if not errors and reading is None:
                         errors["base"] = "device_not_found"
                     if not errors:
-                        devices.append({const.DEV_SERIAL: serial, const.DEV_ID: reading.device_id,
-                                        const.DEV_NAME: user_input[const.DEV_NAME]})
+                        device = {const.DEV_SERIAL: serial, const.DEV_ID: reading.device_id,
+                                  const.DEV_NAME: user_input[const.DEV_NAME]}
+                        if user_input.get(const.DEV_AREA):
+                            device[const.DEV_AREA] = user_input[const.DEV_AREA]
+                        devices.append(device)
                         options = {**self.entry.options, const.CONF_DEVICES: devices}
                         return self._save(options)
-        schema = vol.Schema({vol.Required(const.DEV_SERIAL): str, vol.Required(const.DEV_NAME): str})
+        schema = vol.Schema({
+            vol.Required(const.DEV_SERIAL): str,
+            vol.Required(const.DEV_NAME): str,
+            vol.Optional(const.DEV_AREA): AreaSelector(),
+        })
         return self.async_show_form(step_id="add_device", data_schema=schema, errors=errors)
 
     async def async_step_remove_device(self, user_input=None):

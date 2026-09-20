@@ -70,3 +70,16 @@ def test_unavailable_when_never_successfully_updated():
     coord.last_success_time = None   # no successful update has ever landed
     sensors = build_sensors(coord, {"serial": "AAA111", "device_id": 1001, "name": "Front"})
     assert sensors[0].available is False
+
+
+async def test_device_info_area_and_model(hass):
+    from homeassistant.helpers import area_registry as ar
+    area = ar.async_get(hass).async_create("Backyard")
+    coord = _coord(_reading())
+    coord.hass = hass
+    device = {"serial": "AAA111", "device_id": 1001, "name": "Front", "area_id": area.id}
+    sensors = build_sensors(coord, device)
+    info = sensors[0].device_info
+    assert info["suggested_area"] == "Backyard"
+    assert info["model"] == "GeoDrops Droplet"
+    assert info["name"] == "Front"
