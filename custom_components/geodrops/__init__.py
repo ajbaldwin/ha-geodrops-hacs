@@ -1,0 +1,1 @@
+"""GeoDrops integration."""

@@ -1,0 +1,11 @@
+{
+  "domain": "geodrops",
+  "name": "GeoDrops Soil Moisture",
+  "codeowners": ["@ajbaldwin"],
+  "config_flow": true,
+  "documentation": "https://github.com/ajbaldwin/ha-geodrops-hacs",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/ajbaldwin/ha-geodrops-hacs/issues",
+  "requirements": ["google-cloud-bigquery==3.45.2"],
+  "version": "0.1.0"
+}
