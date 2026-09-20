@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "GeoDrops credentials",
+        "description": "Paste your Google Cloud service-account JSON key and enter your GCP project id. Grant the service account the BigQuery Job User role on your own project.",
+        "data": {
+          "project_id": "GCP project id",
+          "credentials_json": "Service-account JSON"
+        }
+      },
+      "add_device": {
+        "title": "Add a GeoDrops probe",
+        "description": "Enter the serial number shown in the GeoDrops app (for example AAA111) and a friendly name.",
+        "data": {
+          "serial": "Device serial (mfgSn)",
+          "name": "Friendly name"
+        }
+      }
+    },
+    "error": {
+      "invalid_credentials": "The service-account JSON could not be parsed.",
+      "cannot_connect": "Could not query BigQuery. Check the project id and that the service account has BigQuery Job User.",
+      "device_not_found": "No readings found for that serial in the last 12 hours. Check the serial."
+    },
+    "abort": {
+      "already_configured": "This GeoDrops project is already configured."
+    }
+  }
+}
