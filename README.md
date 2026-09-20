@@ -25,28 +25,36 @@ and no polling service to keep alive outside of Home Assistant itself.
 You need a Google Cloud Platform (GCP) project of your own — this is where
 your queries run and are billed, not where the data lives.
 
-1. **A GCP project.** Create one (or reuse one) at the
-   [GCP Console](https://console.cloud.google.com/). Note its **project ID**.
-2. **The BigQuery API enabled** on that project (APIs & Services → Library →
-   search "BigQuery API" → Enable).
-3. **A service account** in that project, with the **BigQuery Job User** role
-   (`roles/bigquery.jobUser`) granted **on your own project**. This is the
-   only role you need to grant — it lets the service account run query jobs
-   billed to your project.
-4. **A downloaded JSON key** for that service account (Service account →
-   Keys → Add Key → Create new key → JSON). Keep this file safe; you'll paste
-   its contents into the config flow during setup, and Home Assistant stores
-   it in the config entry, not on disk as a separate file.
+Follow the GeoDrops community walkthrough (with screenshots),
+[Integrating GeoDrops soil moisture sensors with Home Assistant](https://geodrops.discourse.group/t/integrating-geodrops-soil-moisture-sensors-with-home-assistant/280#p-953-step-by-step-setup-5), or the
+self-contained steps below. If that link ever moves, search the
+[GeoDrops community](https://geodrops.discourse.group/) for "Home Assistant".
 
-You do **not** need to request access to GeoDrops' data, and you do **not**
-need any reader/viewer grant on the `db_public` dataset itself — GeoDrops has
-published it as a public dataset, so any service account that can run a
-query job in its own project can already read it. If a query ever fails with
-a permissions error after your Job User role is confirmed, the cause is
-almost certainly on the GeoDrops side (dataset sharing changed), not your
-IAM setup — check the
-[GeoDrops community BigQuery setup thread](https://geodrops.discourse.group/t/integrating-geodrops-soil-moisture-sensors-with-home-assistant/280)
-for current status.
+1. **Create (or reuse) a GCP project** at the
+   [GCP Console](https://console.cloud.google.com/) — e.g. `home-assistant-geodrops`.
+   Note its **project ID** (you enter it during setup).
+2. **Enable the BigQuery API** on that project: APIs & Services → Library →
+   search "BigQuery API" → **Enable**.
+3. **Create a service account**: IAM & Admin → Service Accounts →
+   **Create service account** (e.g. `home-assistant-bigquery`).
+4. **Grant it `BigQuery Job User`** (`roles/bigquery.jobUser`) **on your own
+   project**. That is the only role required — it lets the account run query
+   jobs billed to your project. *(The community guide also adds `BigQuery Data
+   Viewer`; that's harmless but not required to read the public `db_public`
+   dataset.)*
+5. **Create and download a JSON key**: on the service account → Keys → Add key
+   → Create new key → **JSON**.
+6. **Paste the key's contents into the config flow** at setup (see
+   *Configuration* below). Unlike the older MQTT bridge, this integration does
+   **not** need the file placed in `/config` — Home Assistant stores it in the
+   encrypted config entry.
+
+You do **not** need to request access to GeoDrops' data or add any
+reader/viewer grant on the `db_public` dataset — GeoDrops publishes it as a
+public dataset, so any service account that can run a query job in its own
+project can already read it. If a query ever fails with a permissions error
+*after* your Job User role is confirmed, the cause is almost certainly on the
+GeoDrops side (dataset sharing changed), not your IAM setup.
 
 ## Installation
 
@@ -80,7 +88,7 @@ After the first probe is added, you can add more, remove existing ones, or
 tune polling/staleness settings at any time from the integration's
 **Configure** options (Settings → Devices & Services → GeoDrops →
 Configure). Adding another probe by serial works the same way as the initial
-setup, with the same live preview.
+setup.
 
 ## Sensors
 
@@ -116,6 +124,6 @@ The integration issues **one BigQuery query per poll**, covering the latest
 reading for *all* configured probes at once — it does not issue one query
 per device. The default poll interval is **20 minutes**, adjustable in the
 integration's options (Settings → Devices & Services → GeoDrops →
-Configure → Polling & staleness settings), along with the lookback window
+Configure → Advanced Options), along with the lookback window
 and staleness thresholds. At this query pattern and a typical handful of
 probes, usage stays well within BigQuery's free tier.
