@@ -71,9 +71,10 @@ The config flow is two steps:
    credentials by making a real BigQuery call before letting you continue.
 2. **Add a probe.** Enter the probe's **serial number** exactly as shown in
    the GeoDrops app (e.g. `AAA111`) and a friendly name. The integration
-   looks up recent readings for that serial and shows you a live preview
-   before adding it — if nothing turns up in the lookback window, you'll get
-   an error instead of a silently-empty device.
+   looks up recent readings for that serial to confirm it exists and has
+   reported within the lookback window before adding it — if nothing turns
+   up, you'll get an error instead of a silently-empty device. This lookup
+   only validates the serial; it does not show a live reading preview.
 
 After the first probe is added, you can add more, remove existing ones, or
 tune polling/staleness settings at any time from the integration's
@@ -103,12 +104,11 @@ Each probe becomes one Home Assistant device with 15 sensors:
 | Temperature Depth 3 | Soil temperature (°C) at depth sensor 3 |
 | Avg. 7-Day Sun | 7-day trailing average sun exposure (hours) |
 
-Moisture-related sensors go unavailable (rather than reporting a misleading
-value) while a probe is still in its factory training period and hasn't
-produced a calibrated moisture reading yet. A probe whose last sync is older
-than the configured "mark unavailable after" threshold goes unavailable
-entirely, and one past the "warn after" threshold is still reported but
-flagged as stale.
+Moisture-related sensors report `unknown` (rather than a misleading value)
+while a probe is still in its factory training period and hasn't produced a
+calibrated moisture reading yet. A probe whose last sync is older than the
+configured "mark unavailable after" threshold goes unavailable entirely, and
+one past the "warn after" threshold is still reported but flagged as stale.
 
 ## Polling and cost
 
