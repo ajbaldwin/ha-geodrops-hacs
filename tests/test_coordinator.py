@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
+from custom_components.geodrops.bigquery_api import QueryError
 from custom_components.geodrops.coordinator import GeoDropsCoordinator
 from custom_components.geodrops.transform import DeviceReading
 from custom_components.geodrops import const
@@ -20,6 +21,24 @@ async def test_coordinator_fetches_and_maps(hass, monkeypatch):
     monkeypatch.setattr("custom_components.geodrops.coordinator.fetch_latest",
                         lambda c, ids, lb: {1001: _reading(1001, 42.0)})
     coord = GeoDropsCoordinator(hass, entry, client)
+    assert coord.last_success_time is None
     data = await coord._async_update_data()
     assert data[1001].moisture_pct == 42.0
     assert coord.device_ids == [1001]
+    assert coord.last_success_time is not None   # FIX 8: successful update stamps the time
+
+
+async def test_coordinator_does_not_stamp_success_on_failure(hass, monkeypatch):
+    entry = MagicMock()
+    entry.options = {const.CONF_DEVICES: [{"serial": "AAA111", "device_id": 1001, "name": "Front"}],
+                     const.CONF_SCAN_INTERVAL: 20, const.CONF_LOOKBACK_HOURS: 12}
+    client = MagicMock()
+
+    def _raise(c, ids, lb):
+        raise QueryError("boom")
+
+    monkeypatch.setattr("custom_components.geodrops.coordinator.fetch_latest", _raise)
+    coord = GeoDropsCoordinator(hass, entry, client)
+    with pytest.raises(Exception):   # UpdateFailed
+        await coord._async_update_data()
+    assert coord.last_success_time is None
