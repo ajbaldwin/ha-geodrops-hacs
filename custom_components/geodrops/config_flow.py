@@ -5,9 +5,12 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.helpers import device_registry as dr
 
 from . import const
-from .bigquery_api import make_client, fetch_latest, lookup_serial, CredentialsError, QueryError
+from .bigquery_api import (
+    make_client, lookup_serial, validate_access, CredentialsError, QueryError,
+)
 
 
 class GeoDropsConfigFlow(config_entries.ConfigFlow, domain=const.DOMAIN):
@@ -29,8 +32,7 @@ class GeoDropsConfigFlow(config_entries.ConfigFlow, domain=const.DOMAIN):
                 errors["base"] = "invalid_credentials"
             else:
                 try:
-                    await self.hass.async_add_executor_job(
-                        fetch_latest, client, [], const.DEFAULT_LOOKBACK_HOURS)
+                    await self.hass.async_add_executor_job(validate_access, client)
                 except QueryError:
                     errors["base"] = "cannot_connect"
                 if not errors:
@@ -108,31 +110,41 @@ class GeoDropsOptionsFlow(config_entries.OptionsFlow):
         errors = {}
         if user_input is not None:
             serial = user_input[const.DEV_SERIAL].strip().upper()
-            client = await _rebuild_client(self.hass, self.entry)
-            try:
-                reading = await self.hass.async_add_executor_job(
-                    lookup_serial, client, serial, const.DEFAULT_LOOKBACK_HOURS)
-            except QueryError:
-                errors["base"] = "cannot_connect"
-                reading = None
-            if not errors and reading is None:
-                errors["base"] = "device_not_found"
-            if not errors:
-                devices = self._devices()
-                if any(d[const.DEV_SERIAL] == serial for d in devices):
-                    errors["base"] = "duplicate_device"
-                else:
-                    devices.append({const.DEV_SERIAL: serial, const.DEV_ID: reading.device_id,
-                                    const.DEV_NAME: user_input[const.DEV_NAME]})
-                    options = {**self.entry.options, const.CONF_DEVICES: devices}
-                    return self._save(options)
+            devices = self._devices()
+            if any(d[const.DEV_SERIAL] == serial for d in devices):
+                errors["base"] = "duplicate_device"
+            else:
+                try:
+                    client = await _rebuild_client(self.hass, self.entry)
+                except CredentialsError:
+                    errors["base"] = "cannot_connect"
+                    client = None
+                if not errors:
+                    try:
+                        reading = await self.hass.async_add_executor_job(
+                            lookup_serial, client, serial, const.DEFAULT_LOOKBACK_HOURS)
+                    except QueryError:
+                        errors["base"] = "cannot_connect"
+                        reading = None
+                    if not errors and reading is None:
+                        errors["base"] = "device_not_found"
+                    if not errors:
+                        devices.append({const.DEV_SERIAL: serial, const.DEV_ID: reading.device_id,
+                                        const.DEV_NAME: user_input[const.DEV_NAME]})
+                        options = {**self.entry.options, const.CONF_DEVICES: devices}
+                        return self._save(options)
         schema = vol.Schema({vol.Required(const.DEV_SERIAL): str, vol.Required(const.DEV_NAME): str})
         return self.async_show_form(step_id="add_device", data_schema=schema, errors=errors)
 
     async def async_step_remove_device(self, user_input=None):
         devices = self._devices()
         if user_input is not None:
-            remaining = [d for d in devices if d[const.DEV_SERIAL] != user_input["device"]]
+            serial = user_input["device"]
+            remaining = [d for d in devices if d[const.DEV_SERIAL] != serial]
+            registry = dr.async_get(self.hass)
+            device = registry.async_get_device(identifiers={(const.DOMAIN, serial)})
+            if device is not None:
+                registry.async_remove_device(device.id)
             options = {**self.entry.options, const.CONF_DEVICES: remaining}
             return self._save(options)
         choices = {d[const.DEV_SERIAL]: f"{d[const.DEV_NAME]} ({d[const.DEV_SERIAL]})" for d in devices}

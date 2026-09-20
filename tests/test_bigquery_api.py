@@ -34,6 +34,22 @@ def test_build_serial_lookup_query_is_parameterized():
     assert "INTERVAL 12 HOUR" in sql
 
 
+def test_validate_access_succeeds_on_row():
+    client = FakeClient([FakeRow(x=1)])
+    bq.validate_access(client)   # no exception
+    assert "SELECT 1" in client.last_sql
+    assert "IN (" not in client.last_sql   # never builds an empty deviceId IN () clause
+
+
+def test_validate_access_wraps_query_error():
+    class RaisingClient:
+        def query(self, sql, job_config=None):
+            raise RuntimeError("permission denied")
+
+    with pytest.raises(bq.QueryError):
+        bq.validate_access(RaisingClient())
+
+
 def test_fetch_latest_maps_rows_by_device_id():
     rows = [FakeRow(deviceId=1001, moisturePct=42.0, qcnDepth1=2),
             FakeRow(deviceId=1002, moisturePct=10.0, qcnDepth1=1)]
