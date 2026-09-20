@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "GeoDrops credentials",
+        "title": "Connect GeoDrops to Google BigQuery",
         "description": "Paste your Google Cloud service-account JSON key and enter your GCP project id. Grant the service account the BigQuery Job User role on your own project.",
         "data": {
           "project_id": "GCP project id",

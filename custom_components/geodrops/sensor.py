@@ -81,7 +81,7 @@ class GeoDropsSensor(CoordinatorEntity, SensorEntity):
             self._attr_options = spec.options
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, serial)},
-            name=f"{device[const.DEV_NAME]} Moisture Sensor",
+            name=device[const.DEV_NAME],
             manufacturer="GeoDrops",
             model="Soil Moisture Sensor",
             sw_version="vA2.03.r3",
