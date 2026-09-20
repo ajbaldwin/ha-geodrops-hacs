@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Callable, Optional
 
 from homeassistant.components.sensor import (
@@ -9,6 +10,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from . import const
 from .transform import (
@@ -82,6 +84,7 @@ class GeoDropsSensor(CoordinatorEntity, SensorEntity):
             name=f"{device[const.DEV_NAME]} Moisture Sensor",
             manufacturer="GeoDrops",
             model="Soil Moisture Sensor",
+            sw_version="vA2.03.r3",
         )
 
     @property
@@ -95,7 +98,14 @@ class GeoDropsSensor(CoordinatorEntity, SensorEntity):
             return False
         skip = self.coordinator.entry.options.get(const.CONF_SKIP_HOURS, const.DEFAULT_SKIP_HOURS)
         warn = self.coordinator.entry.options.get(const.CONF_WARN_HOURS, const.DEFAULT_WARN_HOURS)
-        return classify_staleness(r.sync_delay_hours, warn, skip) != "skip"
+        if classify_staleness(r.sync_delay_hours, warn, skip) == "skip":
+            return False
+        expire = self.coordinator.entry.options.get(
+            const.CONF_EXPIRE_MINUTES, const.DEFAULT_EXPIRE_MINUTES)
+        last = self.coordinator.last_success_time
+        if last is None or dt_util.utcnow() - last > timedelta(minutes=expire):
+            return False
+        return True
 
     @property
     def native_value(self):
