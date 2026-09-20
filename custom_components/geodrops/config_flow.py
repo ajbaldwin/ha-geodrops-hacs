@@ -4,6 +4,7 @@ from __future__ import annotations
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.core import callback
 
 from . import const
 from .bigquery_api import make_client, fetch_latest, lookup_serial, CredentialsError, QueryError
@@ -75,3 +76,84 @@ class GeoDropsConfigFlow(config_entries.ConfigFlow, domain=const.DOMAIN):
         })
         return self.async_show_form(step_id="add_device", data_schema=schema,
                                     errors=errors, description_placeholders=description_placeholders)
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        return GeoDropsOptionsFlow(config_entry)
+
+
+def _rebuild_client(hass, entry):
+    return hass.async_add_executor_job(
+        make_client, entry.data[const.CONF_PROJECT_ID], entry.data[const.CONF_CREDENTIALS_JSON])
+
+
+class GeoDropsOptionsFlow(config_entries.OptionsFlow):
+    def __init__(self, entry):
+        self.entry = entry
+
+    def _devices(self):
+        return list(self.entry.options.get(const.CONF_DEVICES, []))
+
+    def _save(self, options):
+        return self.async_create_entry(title="", data=options)
+
+    async def async_step_init(self, user_input=None):
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=["add_device", "remove_device", "settings"],
+        )
+
+    async def async_step_add_device(self, user_input=None):
+        errors = {}
+        if user_input is not None:
+            serial = user_input[const.DEV_SERIAL].strip().upper()
+            client = await _rebuild_client(self.hass, self.entry)
+            try:
+                reading = await self.hass.async_add_executor_job(
+                    lookup_serial, client, serial, const.DEFAULT_LOOKBACK_HOURS)
+            except QueryError:
+                errors["base"] = "cannot_connect"
+                reading = None
+            if not errors and reading is None:
+                errors["base"] = "device_not_found"
+            if not errors:
+                devices = self._devices()
+                if any(d[const.DEV_SERIAL] == serial for d in devices):
+                    errors["base"] = "duplicate_device"
+                else:
+                    devices.append({const.DEV_SERIAL: serial, const.DEV_ID: reading.device_id,
+                                    const.DEV_NAME: user_input[const.DEV_NAME]})
+                    options = {**self.entry.options, const.CONF_DEVICES: devices}
+                    return self._save(options)
+        schema = vol.Schema({vol.Required(const.DEV_SERIAL): str, vol.Required(const.DEV_NAME): str})
+        return self.async_show_form(step_id="add_device", data_schema=schema, errors=errors)
+
+    async def async_step_remove_device(self, user_input=None):
+        devices = self._devices()
+        if user_input is not None:
+            remaining = [d for d in devices if d[const.DEV_SERIAL] != user_input["device"]]
+            options = {**self.entry.options, const.CONF_DEVICES: remaining}
+            return self._save(options)
+        choices = {d[const.DEV_SERIAL]: f"{d[const.DEV_NAME]} ({d[const.DEV_SERIAL]})" for d in devices}
+        schema = vol.Schema({vol.Required("device"): vol.In(choices)})
+        return self.async_show_form(step_id="remove_device", data_schema=schema)
+
+    async def async_step_settings(self, user_input=None):
+        if user_input is not None:
+            options = {**self.entry.options, **user_input}
+            return self._save(options)
+        opts = self.entry.options
+        schema = vol.Schema({
+            vol.Required(const.CONF_SCAN_INTERVAL,
+                         default=opts.get(const.CONF_SCAN_INTERVAL, const.DEFAULT_SCAN_INTERVAL)): int,
+            vol.Required(const.CONF_LOOKBACK_HOURS,
+                         default=opts.get(const.CONF_LOOKBACK_HOURS, const.DEFAULT_LOOKBACK_HOURS)): int,
+            vol.Required(const.CONF_WARN_HOURS,
+                         default=opts.get(const.CONF_WARN_HOURS, const.DEFAULT_WARN_HOURS)): int,
+            vol.Required(const.CONF_SKIP_HOURS,
+                         default=opts.get(const.CONF_SKIP_HOURS, const.DEFAULT_SKIP_HOURS)): int,
+            vol.Required(const.CONF_EXPIRE_MINUTES,
+                         default=opts.get(const.CONF_EXPIRE_MINUTES, const.DEFAULT_EXPIRE_MINUTES)): int,
+        })
+        return self.async_show_form(step_id="settings", data_schema=schema)

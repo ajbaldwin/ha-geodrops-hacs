@@ -26,5 +26,41 @@
     "abort": {
       "already_configured": "This GeoDrops project is already configured."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "GeoDrops options",
+        "menu_options": {
+          "add_device": "Add a probe",
+          "remove_device": "Remove a probe",
+          "settings": "Polling & staleness settings"
+        }
+      },
+      "add_device": {
+        "title": "Add a GeoDrops probe",
+        "description": "Enter the serial from the GeoDrops app (for example AAA111) and a friendly name.",
+        "data": { "serial": "Device serial (mfgSn)", "name": "Friendly name" }
+      },
+      "remove_device": {
+        "title": "Remove a probe",
+        "data": { "device": "Probe to remove" }
+      },
+      "settings": {
+        "title": "Polling & staleness",
+        "data": {
+          "scan_interval_minutes": "Poll interval (minutes)",
+          "lookback_hours": "BigQuery lookback (hours)",
+          "staleness_warn_hours": "Warn after (hours)",
+          "staleness_skip_hours": "Mark unavailable after (hours)",
+          "expire_after_minutes": "Expire after (minutes)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not query BigQuery.",
+      "device_not_found": "No readings found for that serial in the last 12 hours.",
+      "duplicate_device": "That serial is already configured."
+    }
   }
 }
