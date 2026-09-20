@@ -6,6 +6,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.selector import TextSelector, TextSelectorConfig
 
 from . import const
 from .bigquery_api import (
@@ -42,7 +43,9 @@ class GeoDropsConfigFlow(config_entries.ConfigFlow, domain=const.DOMAIN):
                     return await self.async_step_add_device()
         schema = vol.Schema({
             vol.Required(const.CONF_PROJECT_ID): str,
-            vol.Required(const.CONF_CREDENTIALS_JSON): str,
+            vol.Required(const.CONF_CREDENTIALS_JSON): TextSelector(
+                TextSelectorConfig(multiline=True)
+            ),
         })
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
 
