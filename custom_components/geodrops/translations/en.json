@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect GeoDrops to Google BigQuery",
-        "description": "Paste your Google Cloud service-account JSON key and enter your GCP project id. Grant the service account the BigQuery Job User role on your own project.",
+        "description": "Paste your Google Cloud service-account JSON key and enter your GCP project id. The service account needs the BigQuery Job User role on your own project. New to this? Follow the [step-by-step setup guide](https://geodrops.discourse.group/t/integrating-geodrops-soil-moisture-sensors-with-home-assistant/280#p-953-step-by-step-setup-5).",
         "data": {
           "project_id": "GCP project id",
           "credentials_json": "Service-account JSON"
