@@ -1,4 +1,4 @@
-# GeoDrops Soil Moisture
+# GeoDrops
 
 Native Home Assistant integration for GeoDrops soil moisture probes. Reads
 your probe readings directly from BigQuery — no MQTT bridge, no separate

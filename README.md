@@ -1,4 +1,4 @@
-# GeoDrops Soil Moisture for Home Assistant
+# GeoDrops for Home Assistant
 
 A native Home Assistant integration for [GeoDrops](https://geodrops.io/) soil
 moisture probes. It reads your sensor data straight out of BigQuery and
@@ -55,7 +55,7 @@ for current status.
 
    This repository publishes releases with `hide_default_branch: true`, so
    HACS will only ever offer you tagged releases, never the tip of `main`.
-2. Install **GeoDrops Soil Moisture** from HACS, then restart Home Assistant
+2. Install **GeoDrops** from HACS, then restart Home Assistant
    when prompted.
 3. Go to **Settings → Devices & Services → Add Integration**, search for
    **GeoDrops**, and start the config flow.
