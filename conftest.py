@@ -15,12 +15,17 @@ def auto_enable_custom_integrations(enable_custom_integrations):
     yield
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def mock_setup_entry():
-    """Config-flow tests exercise flow logic only; real component bootstrap
-    (BigQuery client, coordinator refresh) is covered by test_coordinator.py
-    and test_sensor.py. Without this, HA auto-sets-up newly created config
-    entries with the real (unmocked) async_setup_entry, which fails against
-    the flow tests' fake credentials and crashes fixture teardown."""
+    """Stub out real component bootstrap for config-flow tests only.
+
+    Not autouse: config-flow tests opt in via
+    `pytestmark = pytest.mark.usefixtures("mock_setup_entry")` (see
+    tests/test_config_flow.py) so every other test file still exercises the
+    real async_setup_entry (BigQuery client, coordinator refresh — covered
+    by test_coordinator.py and test_sensor.py). Without this fixture, HA
+    auto-sets-up a newly created config entry with the real (unmocked)
+    async_setup_entry, which fails against the flow tests' fake credentials
+    and crashes fixture teardown."""
     with patch("custom_components.geodrops.async_setup_entry", return_value=True):
         yield
