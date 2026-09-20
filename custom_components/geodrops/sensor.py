@@ -56,11 +56,14 @@ SENSOR_SPECS = [
     SensorSpec("temp_d1", "Temperature Depth 1", lambda r: r.temp_d1, **_TEMP),
     SensorSpec("temp_d2", "Temperature Depth 2", lambda r: r.temp_d2, **_TEMP),
     SensorSpec("temp_d3", "Temperature Depth 3", lambda r: r.temp_d3, **_TEMP),
-    SensorSpec("sun_7d", "Avg. 7-Day Sun", lambda r: r.sun_7d, unit="h", icon=lambda r: "mdi:white-balance-sunny"),
+    SensorSpec("sun_7d", "Avg. 7-Day Sun", lambda r: r.sun_7d, unit="h",
+               state_class=SensorStateClass.MEASUREMENT, icon=lambda r: "mdi:white-balance-sunny"),
 ]
 
 
 class GeoDropsSensor(CoordinatorEntity, SensorEntity):
+    _attr_has_entity_name = True
+
     def __init__(self, coordinator, device, spec):
         super().__init__(coordinator)
         self._device = device
