@@ -66,7 +66,7 @@ class GeoDropsConfigFlow(config_entries.ConfigFlow, domain=const.DOMAIN):
                 await self.async_set_unique_id(self._project_id)
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
-                    title="GeoDrops Soil Moisture",
+                    title="GeoDrops",
                     data={const.CONF_PROJECT_ID: self._project_id,
                           const.CONF_CREDENTIALS_JSON: self._credentials_json},
                     options={const.CONF_DEVICES: [{

@@ -1,6 +1,6 @@
 {
   "domain": "geodrops",
-  "name": "GeoDrops Soil Moisture",
+  "name": "GeoDrops",
   "codeowners": ["@ajbaldwin"],
   "config_flow": true,
   "documentation": "https://github.com/ajbaldwin/ha-geodrops-hacs",
