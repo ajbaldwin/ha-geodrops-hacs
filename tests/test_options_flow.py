@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
+from homeassistant.helpers import device_registry as dr
 from custom_components.geodrops import const
 from custom_components.geodrops.transform import DeviceReading
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -51,9 +52,16 @@ async def test_add_second_device(hass):
 async def test_remove_device(hass):
     entry = _entry()
     entry.add_to_hass(hass)
+    registry = dr.async_get(hass)
+    device = registry.async_get_or_create(
+        config_entry_id=entry.entry_id, identifiers={(const.DOMAIN, "AAA111")})
+
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"next_step_id": "remove_device"})
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"device": "AAA111"})
     assert entry.options[const.CONF_DEVICES] == []
+    # the device (and its 15 entities) must be purged from the registry, not orphaned
+    assert registry.async_get_device(identifiers={(const.DOMAIN, "AAA111")}) is None
+    assert registry.async_get(device.id) is None

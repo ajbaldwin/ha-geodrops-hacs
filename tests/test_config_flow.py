@@ -20,7 +20,7 @@ async def test_full_flow_creates_entry(hass):
     assert result["step_id"] == "user"
 
     with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()), \
-         patch("custom_components.geodrops.config_flow.fetch_latest", return_value={}):
+         patch("custom_components.geodrops.config_flow.validate_access", return_value=None):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             {const.CONF_PROJECT_ID: "your-gcp-project-id",
@@ -52,7 +52,7 @@ async def test_unknown_serial_shows_error(hass):
     result = await hass.config_entries.flow.async_init(
         const.DOMAIN, context={"source": config_entries.SOURCE_USER})
     with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()), \
-         patch("custom_components.geodrops.config_flow.fetch_latest", return_value={}):
+         patch("custom_components.geodrops.config_flow.validate_access", return_value=None):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             {const.CONF_PROJECT_ID: "p", const.CONF_CREDENTIALS_JSON: '{"type":"x"}'})

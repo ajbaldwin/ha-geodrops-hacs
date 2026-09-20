@@ -59,6 +59,22 @@ def make_client(project_id: str, credentials_json: str):
     return bigquery.Client(credentials=creds, project=project_id)
 
 
+def validate_access(client) -> None:
+    """Trivial, near-zero-cost probe that confirms table read access.
+
+    Selects a literal (no columns referenced) so BigQuery bills ~0 bytes,
+    while still exercising real permission/auth/project checks against the
+    table. Used to validate credentials during config flow setup, where an
+    empty device-id list would otherwise force `WHERE deviceId IN ()` --
+    invalid GoogleSQL that BigQuery rejects for every user, valid or not.
+    """
+    sql = f"SELECT 1 FROM `{BQ_TABLE}` LIMIT 1"
+    try:
+        list(client.query(sql))
+    except Exception as err:  # google.api_core exceptions
+        raise QueryError(str(err)) from err
+
+
 def fetch_latest(client, device_ids, lookback_hours: int):
     sql = build_latest_query(device_ids, lookback_hours)
     try:
