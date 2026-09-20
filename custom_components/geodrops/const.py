@@ -19,6 +19,7 @@ CONF_EXPIRE_MINUTES = "expire_after_minutes"
 DEV_SERIAL = "serial"
 DEV_ID = "device_id"
 DEV_NAME = "name"
+DEV_AREA = "area_id"   # optional HA area id assigned at add time
 
 # defaults (from the standalone service)
 DEFAULT_SCAN_INTERVAL = 20

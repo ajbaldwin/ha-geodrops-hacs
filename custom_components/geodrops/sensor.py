@@ -8,6 +8,7 @@ from typing import Callable, Optional
 from homeassistant.components.sensor import (
     SensorDeviceClass, SensorEntity, SensorStateClass,
 )
+from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
@@ -79,13 +80,19 @@ class GeoDropsSensor(CoordinatorEntity, SensorEntity):
         self._attr_state_class = spec.state_class
         if spec.options:
             self._attr_options = spec.options
-        self._attr_device_info = DeviceInfo(
+        device_info = DeviceInfo(
             identifiers={(const.DOMAIN, serial)},
             name=device[const.DEV_NAME],
             manufacturer="GeoDrops",
-            model="Soil Moisture Sensor",
+            model="GeoDrops Droplet",
             sw_version="vA2.03.r3",
         )
+        area_id = device.get(const.DEV_AREA)
+        if area_id:
+            area = ar.async_get(coordinator.hass).async_get_area(area_id)
+            if area is not None:
+                device_info["suggested_area"] = area.name
+        self._attr_device_info = device_info
 
     @property
     def _reading(self):
