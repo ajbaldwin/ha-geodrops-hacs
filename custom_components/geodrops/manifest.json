@@ -7,5 +7,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/ajbaldwin/ha-geodrops-hacs/issues",
   "requirements": ["google-cloud-bigquery==3.45.2"],
-  "version": "0.5.0"
+  "version": "0.5.1"
 }
