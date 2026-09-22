@@ -7,7 +7,7 @@ bridge, no external service to run, no YAML to hand-edit. Everything is
 configured through the UI.
 
 This is a companion project to the standalone
-[`ha-geodrops-rachio-wrapper`](https://github.com/ajbaldwin/ha-geodrops-rachio-wrapper)
+[`ha-geodrops-rachio-irrigation`](https://github.com/ajbaldwin/ha-geodrops-rachio-irrigation)
 irrigation scheduler, but it does not require it — install this on its own if
 all you want is soil-moisture data in Home Assistant.
 
