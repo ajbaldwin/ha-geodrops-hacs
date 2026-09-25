@@ -4,6 +4,14 @@ from __future__ import annotations
 from typing import Optional
 
 from .const import BQ_TABLE
+
+# Bound every query. The library defaults retry RPCs for up to 10 minutes and
+# failed jobs for up to 40, with no overall wait limit: during a Google outage
+# a single poll (or the setup / add-probe form) would hang that long. With
+# these, a query gives up after ~60 s (worst case ~80 s with one HTTP call in
+# flight) and the next poll tries again.
+QUERY_TIMEOUT = 60
+_API_TIMEOUT = 20   # per HTTP request
 from .transform import DeviceReading, reading_from_row
 
 _COLUMNS = """
@@ -48,9 +56,16 @@ def _is_auth_error(err: BaseException) -> bool:
     return False
 
 
-def _run(client, sql: str, **kwargs):
+def _run(client, sql: str, job_config=None):
+    from google.cloud.bigquery.retry import DEFAULT_JOB_RETRY, DEFAULT_RETRY
+
     try:
-        return list(client.query(sql, **kwargs))
+        return list(client.query_and_wait(
+            sql, job_config=job_config,
+            api_timeout=_API_TIMEOUT, wait_timeout=QUERY_TIMEOUT,
+            retry=DEFAULT_RETRY.with_timeout(QUERY_TIMEOUT),
+            job_retry=DEFAULT_JOB_RETRY.with_timeout(QUERY_TIMEOUT),
+        ))
     except Exception as err:  # google.api_core / google.auth exceptions
         if _is_auth_error(err):
             raise AuthError(str(err)) from err
