@@ -17,15 +17,36 @@
           "name": "Friendly name",
           "area_id": "Area (optional)"
         }
+      },
+      "reauth_confirm": {
+        "title": "Update the GeoDrops service-account key",
+        "description": "Google is no longer accepting the stored service-account key for project {project_id} (it was probably deleted, revoked, or its service account was disabled). Create a new JSON key for the service account and paste its full contents below. Your probes and settings are kept.",
+        "data": {
+          "credentials_json": "Service-account JSON"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure GeoDrops",
+        "description": "Change the GCP project the queries run and bill in, or paste a new service-account JSON key to rotate it. Your probes and settings are kept.",
+        "data": {
+          "project_id": "GCP project id",
+          "credentials_json": "Service-account JSON"
+        },
+        "data_description": {
+          "credentials_json": "Leave blank to keep the current key."
+        }
       }
     },
     "error": {
       "invalid_credentials": "The service-account JSON could not be parsed.",
       "cannot_connect": "Could not query BigQuery. Check the project id and that the service account has BigQuery Job User.",
-      "device_not_found": "No readings found for that serial in the last 12 hours. Check the serial."
+      "device_not_found": "No readings found for that serial in the last 12 hours. Check the serial.",
+      "invalid_auth": "Google rejected this service-account key. It may have been deleted or revoked, or its service account disabled. Create a new JSON key and try again."
     },
     "abort": {
-      "already_configured": "This GeoDrops project is already configured."
+      "already_configured": "This GeoDrops project is already configured.",
+      "reauth_successful": "The service-account key was updated.",
+      "reconfigure_successful": "GeoDrops was reconfigured."
     }
   },
   "options": {
@@ -41,11 +62,17 @@
       "add_device": {
         "title": "Add a GeoDrops probe",
         "description": "Enter the serial from the GeoDrops app (for example AAA111) and a friendly name.",
-        "data": { "serial": "Device serial (mfgSn)", "name": "Friendly name", "area_id": "Area (optional)" }
+        "data": {
+          "serial": "Device serial (mfgSn)",
+          "name": "Friendly name",
+          "area_id": "Area (optional)"
+        }
       },
       "remove_device": {
         "title": "Remove a probe",
-        "data": { "device": "Probe to remove" }
+        "data": {
+          "device": "Probe to remove"
+        }
       },
       "settings": {
         "title": "Advanced Options",
@@ -61,14 +88,15 @@
           "lookback_hours": "How far back to search for each probe's latest reading on every poll. Default 12.",
           "staleness_warn_hours": "Log a warning once a probe's data is older than this many hours. Default 6.",
           "staleness_skip_hours": "Mark a probe's sensors unavailable once its data is older than this many hours. Default 12.",
-          "expire_after_minutes": "Also mark sensors unavailable if the integration has not polled successfully within this many minutes. Default 45."
+          "expire_after_minutes": "Also mark sensors unavailable if the integration has not polled successfully within this many minutes. Default 80."
         }
       }
     },
     "error": {
       "cannot_connect": "Could not query BigQuery.",
       "device_not_found": "No readings found for that serial in the last 12 hours.",
-      "duplicate_device": "That serial is already configured."
+      "duplicate_device": "That serial is already configured.",
+      "invalid_auth": "Google rejected the stored service-account key. Update it via the integration's Reconfigure option, then try again."
     }
   }
 }

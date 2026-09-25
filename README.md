@@ -104,6 +104,22 @@ tune polling/staleness settings at any time from the integration's
 Configure). Adding another probe by serial works the same way as the initial
 setup.
 
+### Rotating the key or changing project
+
+To paste a new service-account key or switch GCP projects, open the
+integration's menu (Settings → Devices & Services → GeoDrops → ⋮) and choose
+**Reconfigure**. Leave the key field blank to keep the current key. Your
+probes and settings are kept.
+
+If Google stops accepting the stored key (because it was deleted or revoked,
+or its service account was disabled), Home Assistant stops polling and flags
+GeoDrops as needing re-authentication on the Devices & Services page. Click
+**Reconfigure** on it, then create a new JSON key for the service account and
+paste it in to get polling going again. Permission errors (for
+example, a missing BigQuery Job User role) don't trigger this. Home Assistant
+keeps retrying those, and polling recovers on its own once you fix the role
+in GCP.
+
 ## Sensors
 
 Each probe becomes one Home Assistant device with 15 sensors:

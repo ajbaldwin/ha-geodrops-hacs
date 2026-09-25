@@ -2,7 +2,9 @@ import pytest
 from unittest.mock import patch, MagicMock
 from homeassistant import config_entries, data_entry_flow
 from custom_components.geodrops import const
+from custom_components.geodrops.bigquery_api import AuthError, QueryError
 from custom_components.geodrops.transform import DeviceReading
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 pytestmark = pytest.mark.usefixtures("mock_setup_entry")
 
@@ -60,3 +62,112 @@ async def test_unknown_serial_shows_error(hass):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {const.DEV_SERIAL: "ZZZ999", const.DEV_NAME: "Nope"})
     assert result["errors"] == {"base": "device_not_found"}
+
+
+def _existing_entry(hass, project="p", key='{"type":"old"}'):
+    entry = MockConfigEntry(
+        domain=const.DOMAIN, unique_id=project,
+        data={const.CONF_PROJECT_ID: project, const.CONF_CREDENTIALS_JSON: key},
+        options={const.CONF_DEVICES: [{"serial": "AAA111", "device_id": 1001, "name": "Front"}]},
+    )
+    entry.add_to_hass(hass)
+    return entry
+
+
+async def test_rejected_key_in_user_step_shows_invalid_auth(hass):
+    result = await hass.config_entries.flow.async_init(
+        const.DOMAIN, context={"source": config_entries.SOURCE_USER})
+    with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()), \
+         patch("custom_components.geodrops.config_flow.validate_access",
+               side_effect=AuthError("invalid_grant")):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {const.CONF_PROJECT_ID: "p", const.CONF_CREDENTIALS_JSON: '{"type":"x"}'})
+    assert result["errors"] == {"base": "invalid_auth"}
+
+
+async def test_reauth_replaces_key_and_keeps_probes(hass):
+    entry = _existing_entry(hass)
+    result = await entry.start_reauth_flow(hass)
+    assert result["step_id"] == "reauth_confirm"
+    assert result["description_placeholders"]["project_id"] == "p"
+
+    with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()), \
+         patch("custom_components.geodrops.config_flow.validate_access", return_value=None):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {const.CONF_CREDENTIALS_JSON: '{"type":"new"}'})
+    await hass.async_block_till_done()   # let the triggered reload finish
+    assert result["type"] == data_entry_flow.FlowResultType.ABORT
+    assert result["reason"] == "reauth_successful"
+    assert entry.data[const.CONF_CREDENTIALS_JSON] == '{"type":"new"}'
+    assert entry.data[const.CONF_PROJECT_ID] == "p"
+    assert len(entry.options[const.CONF_DEVICES]) == 1
+
+
+async def test_reauth_with_another_rejected_key_shows_error(hass):
+    entry = _existing_entry(hass)
+    result = await entry.start_reauth_flow(hass)
+    with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()), \
+         patch("custom_components.geodrops.config_flow.validate_access",
+               side_effect=AuthError("invalid_grant")):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {const.CONF_CREDENTIALS_JSON: '{"type":"also-dead"}'})
+    assert result["step_id"] == "reauth_confirm"
+    assert result["errors"] == {"base": "invalid_auth"}
+    assert entry.data[const.CONF_CREDENTIALS_JSON] == '{"type":"old"}'   # untouched
+
+
+async def test_reconfigure_blank_key_keeps_stored_key(hass):
+    entry = _existing_entry(hass)
+    result = await entry.start_reconfigure_flow(hass)
+    assert result["step_id"] == "reconfigure"
+
+    with patch("custom_components.geodrops.config_flow.make_client",
+               return_value=MagicMock()) as make_client, \
+         patch("custom_components.geodrops.config_flow.validate_access", return_value=None):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {const.CONF_PROJECT_ID: "new-project"})
+    await hass.async_block_till_done()
+    assert result["reason"] == "reconfigure_successful"
+    make_client.assert_called_once_with("new-project", '{"type":"old"}')
+    assert entry.data == {const.CONF_PROJECT_ID: "new-project",
+                          const.CONF_CREDENTIALS_JSON: '{"type":"old"}'}
+    assert entry.unique_id == "new-project"
+    assert len(entry.options[const.CONF_DEVICES]) == 1
+
+
+async def test_reconfigure_rotates_key(hass):
+    entry = _existing_entry(hass)
+    result = await entry.start_reconfigure_flow(hass)
+    with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()), \
+         patch("custom_components.geodrops.config_flow.validate_access", return_value=None):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {const.CONF_PROJECT_ID: "p", const.CONF_CREDENTIALS_JSON: '{"type":"new"}'})
+    await hass.async_block_till_done()
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data[const.CONF_CREDENTIALS_JSON] == '{"type":"new"}'
+    assert entry.unique_id == "p"
+
+
+async def test_reconfigure_to_already_configured_project_aborts(hass):
+    entry = _existing_entry(hass, project="p")
+    _existing_entry(hass, project="other")
+    result = await entry.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {const.CONF_PROJECT_ID: "other"})
+    assert result["type"] == data_entry_flow.FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    assert entry.data[const.CONF_PROJECT_ID] == "p"
+
+
+async def test_reconfigure_bad_project_shows_error(hass):
+    entry = _existing_entry(hass)
+    result = await entry.start_reconfigure_flow(hass)
+    with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()), \
+         patch("custom_components.geodrops.config_flow.validate_access",
+               side_effect=QueryError("404 project not found")):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {const.CONF_PROJECT_ID: "typo-project"})
+    assert result["errors"] == {"base": "cannot_connect"}
+    assert entry.data[const.CONF_PROJECT_ID] == "p"
