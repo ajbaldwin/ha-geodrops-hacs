@@ -10,8 +10,27 @@ from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, Are
 
 from . import const
 from .bigquery_api import (
-    make_client, lookup_serial, validate_access, CredentialsError, QueryError,
+    make_client, lookup_serial, validate_access, AuthError, CredentialsError, QueryError,
 )
+
+
+def _credentials_field():
+    return TextSelector(TextSelectorConfig(multiline=True))
+
+
+async def _validate_credentials(hass, project_id, credentials_json):
+    """Build a client and prove it can query. Returns (client, error_key)."""
+    try:
+        client = await hass.async_add_executor_job(make_client, project_id, credentials_json)
+    except CredentialsError:
+        return None, "invalid_credentials"
+    try:
+        await hass.async_add_executor_job(validate_access, client)
+    except AuthError:
+        return None, "invalid_auth"
+    except QueryError:
+        return None, "cannot_connect"
+    return client, None
 
 
 class GeoDropsConfigFlow(config_entries.ConfigFlow, domain=const.DOMAIN):
@@ -25,27 +44,19 @@ class GeoDropsConfigFlow(config_entries.ConfigFlow, domain=const.DOMAIN):
     async def async_step_user(self, user_input=None):
         errors = {}
         if user_input is not None:
-            try:
-                client = await self.hass.async_add_executor_job(
-                    make_client, user_input[const.CONF_PROJECT_ID],
-                    user_input[const.CONF_CREDENTIALS_JSON])
-            except CredentialsError:
-                errors["base"] = "invalid_credentials"
+            client, error = await _validate_credentials(
+                self.hass, user_input[const.CONF_PROJECT_ID],
+                user_input[const.CONF_CREDENTIALS_JSON])
+            if error:
+                errors["base"] = error
             else:
-                try:
-                    await self.hass.async_add_executor_job(validate_access, client)
-                except QueryError:
-                    errors["base"] = "cannot_connect"
-                if not errors:
-                    self._project_id = user_input[const.CONF_PROJECT_ID]
-                    self._credentials_json = user_input[const.CONF_CREDENTIALS_JSON]
-                    self._client = client
-                    return await self.async_step_add_device()
+                self._project_id = user_input[const.CONF_PROJECT_ID]
+                self._credentials_json = user_input[const.CONF_CREDENTIALS_JSON]
+                self._client = client
+                return await self.async_step_add_device()
         schema = vol.Schema({
             vol.Required(const.CONF_PROJECT_ID): str,
-            vol.Required(const.CONF_CREDENTIALS_JSON): TextSelector(
-                TextSelectorConfig(multiline=True)
-            ),
+            vol.Required(const.CONF_CREDENTIALS_JSON): _credentials_field(),
         })
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
 
@@ -85,6 +96,54 @@ class GeoDropsConfigFlow(config_entries.ConfigFlow, domain=const.DOMAIN):
         })
         return self.async_show_form(step_id="add_device", data_schema=schema,
                                     errors=errors, description_placeholders=description_placeholders)
+
+    async def async_step_reauth(self, entry_data):
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(self, user_input=None):
+        """Replace a service-account key that Google has stopped accepting."""
+        errors = {}
+        entry = self._get_reauth_entry()
+        project_id = entry.data[const.CONF_PROJECT_ID]
+        if user_input is not None:
+            credentials_json = user_input[const.CONF_CREDENTIALS_JSON]
+            _, error = await _validate_credentials(self.hass, project_id, credentials_json)
+            if error:
+                errors["base"] = error
+            else:
+                return self.async_update_reload_and_abort(
+                    entry, data_updates={const.CONF_CREDENTIALS_JSON: credentials_json})
+        schema = vol.Schema({vol.Required(const.CONF_CREDENTIALS_JSON): _credentials_field()})
+        return self.async_show_form(
+            step_id="reauth_confirm", data_schema=schema, errors=errors,
+            description_placeholders={"project_id": project_id})
+
+    async def async_step_reconfigure(self, user_input=None):
+        """Change the GCP project and/or rotate the key without re-adding probes."""
+        errors = {}
+        entry = self._get_reconfigure_entry()
+        current_project = entry.data[const.CONF_PROJECT_ID]
+        if user_input is not None:
+            project_id = user_input[const.CONF_PROJECT_ID].strip()
+            # blank key field = keep the stored key
+            credentials_json = (user_input.get(const.CONF_CREDENTIALS_JSON) or "").strip() \
+                or entry.data[const.CONF_CREDENTIALS_JSON]
+            if project_id != current_project:
+                await self.async_set_unique_id(project_id)
+                self._abort_if_unique_id_configured()
+            _, error = await _validate_credentials(self.hass, project_id, credentials_json)
+            if error:
+                errors["base"] = error
+            else:
+                return self.async_update_reload_and_abort(
+                    entry, unique_id=project_id,
+                    data_updates={const.CONF_PROJECT_ID: project_id,
+                                  const.CONF_CREDENTIALS_JSON: credentials_json})
+        schema = vol.Schema({
+            vol.Required(const.CONF_PROJECT_ID, default=current_project): str,
+            vol.Optional(const.CONF_CREDENTIALS_JSON): _credentials_field(),
+        })
+        return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
 
     @staticmethod
     @callback
@@ -130,6 +189,9 @@ class GeoDropsOptionsFlow(config_entries.OptionsFlow):
                     try:
                         reading = await self.hass.async_add_executor_job(
                             lookup_serial, client, serial, const.DEFAULT_LOOKBACK_HOURS)
+                    except AuthError:
+                        errors["base"] = "invalid_auth"
+                        reading = None
                     except QueryError:
                         errors["base"] = "cannot_connect"
                         reading = None

@@ -42,3 +42,20 @@ async def test_coordinator_does_not_stamp_success_on_failure(hass, monkeypatch):
     with pytest.raises(Exception):   # UpdateFailed
         await coord._async_update_data()
     assert coord.last_success_time is None
+
+
+async def test_coordinator_raises_auth_failed_when_key_rejected(hass, monkeypatch):
+    from homeassistant.exceptions import ConfigEntryAuthFailed
+    from custom_components.geodrops.bigquery_api import AuthError
+
+    entry = MagicMock()
+    entry.options = {const.CONF_DEVICES: [{"serial": "AAA111", "device_id": 1001, "name": "Front"}]}
+
+    def _raise(c, ids, lb):
+        raise AuthError("invalid_grant")
+
+    monkeypatch.setattr("custom_components.geodrops.coordinator.fetch_latest", _raise)
+    coord = GeoDropsCoordinator(hass, entry, MagicMock())
+    with pytest.raises(ConfigEntryAuthFailed):
+        await coord._async_update_data()
+    assert coord.last_success_time is None

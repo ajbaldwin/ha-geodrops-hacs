@@ -4,7 +4,7 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryAuthFailed
 
 from . import const
 from .bigquery_api import make_client, CredentialsError
@@ -21,7 +21,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             entry.data[const.CONF_CREDENTIALS_JSON],
         )
     except CredentialsError as err:
-        raise ConfigEntryNotReady(str(err)) from err
+        # the stored key can't even be parsed; retrying won't fix it
+        raise ConfigEntryAuthFailed(str(err)) from err
 
     coordinator = GeoDropsCoordinator(hass, entry, client)
     await coordinator.async_config_entry_first_refresh()
@@ -39,5 +40,5 @@ async def _reload(hass: HomeAssistant, entry: ConfigEntry) -> None:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
-        hass.data[const.DOMAIN].pop(entry.entry_id, None)
+        hass.data.get(const.DOMAIN, {}).pop(entry.entry_id, None)
     return unloaded

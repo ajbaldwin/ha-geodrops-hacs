@@ -56,13 +56,24 @@ def test_unavailable_when_stale_beyond_skip():
 
 
 def test_unavailable_when_feed_is_stale_even_if_reading_is_fresh():
-    # FIX 8 "both signals": expire_after_minutes (default 45) must also gate
+    # FIX 8 "both signals": expire_after_minutes (default 80) must also gate
     # availability -- a quiet feed (no successful coordinator update recently)
     # makes sensors unavailable even though the last reading itself is fresh.
     stale_success = dt_util.utcnow() - timedelta(hours=2)
     coord = _coord(_reading(), last_success_time=stale_success)
     sensors = build_sensors(coord, {"serial": "AAA111", "device_id": 1001, "name": "Front"})
     assert sensors[0].available is False
+
+
+def test_default_expire_rides_out_three_missed_polls():
+    # default 80 min at the default 20 min poll: 3 consecutive failed polls
+    # (last success 60-79 min ago) keep sensors up; the 4th makes them unavailable
+    assert const.DEFAULT_EXPIRE_MINUTES == 80
+    device = {"serial": "AAA111", "device_id": 1001, "name": "Front"}
+    recent = _coord(_reading(), last_success_time=dt_util.utcnow() - timedelta(minutes=75))
+    assert build_sensors(recent, device)[0].available is True
+    old = _coord(_reading(), last_success_time=dt_util.utcnow() - timedelta(minutes=85))
+    assert build_sensors(old, device)[0].available is False
 
 
 def test_unavailable_when_never_successfully_updated():
