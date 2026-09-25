@@ -162,4 +162,10 @@ git tag "$TAG"
 git push origin "$TAG"
 gh release create "$TAG" --verify-tag "$FLAG" --title "$TITLE" --notes-file "$NOTES_FILE"
 bash tools/check_release.sh "$TAG" "$PRERELEASE"
-echo "Published $TAG. release-guard.yml re-checks it on GitHub."
+if [ -n "${GITHUB_ACTIONS:-}" ]; then
+  # a release made with a workflow's token doesn't trigger release-guard.yml;
+  # check_release.sh just above is the check
+  echo "Published $TAG."
+else
+  echo "Published $TAG. release-guard.yml re-checks it on GitHub."
+fi
