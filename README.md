@@ -68,6 +68,20 @@ GeoDrops side (dataset sharing changed), not your IAM setup.
 3. Go to **Settings → Devices & Services → Add Integration**, search for
    **GeoDrops**, and start the config flow.
 
+### Beta versions
+
+New versions are released as betas (`X.Y.Z-beta.N`) before they become a
+stable release. HACS only offers betas if you opt in:
+
+1. Go to **Settings → Devices & services → Entities**, search for
+   **Pre-release**, and open the one for *GeoDrops* (a switch HACS creates for
+   each repository, disabled by default).
+2. Enable the entity, wait about 30 seconds, then turn the switch **on**.
+
+HACS then offers each beta as an update. Turn the switch off to go back to
+stable releases only; you'll get the next stable when it's newer than the beta
+you're on.
+
 ## Configuration
 
 The config flow is two steps:
