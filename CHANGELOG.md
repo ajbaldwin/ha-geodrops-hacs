@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0-beta.1 — Replace a dead key without starting over
+- **New key without re-adding probes.** If Google stops accepting your service-account key (deleted, revoked, or its service account disabled), GeoDrops now asks you to re-authenticate on the Devices & Services page — paste a new key and you're back, probes and settings intact. Previously it retried forever and the only fix was deleting and re-adding the integration.
+- **Reconfigure.** Change the GCP project or rotate the key any time from the integration's ⋮ menu → Reconfigure. Leave the key blank to keep the current one.
+- **Rides out Google hiccups.** Temporary Google errors (outages, rate limits, network drops) no longer trigger a re-authentication prompt; the next poll simply tries again. Permission errors (e.g. a missing BigQuery Job User role) also keep retrying and recover on their own once fixed.
+- **No more hung polls.** Each BigQuery query now gives up after about 60 seconds instead of retrying for up to 40 minutes, so setup and "add a probe" fail fast with a clear error during an outage.
+- **Fewer false "unavailable" gaps.** The default "Expire after" is now 80 minutes (was 45), so sensors stay up through three missed polls instead of two. If you've ever saved Advanced Options, your stored value is kept — change it under Configure → Advanced Options.
+
 ## 0.5.1 — Cleaner setup-screen wording
 - The setup screen's help text now points to the integration's Documentation link instead of showing a raw URL in the description. No functional change.
 
