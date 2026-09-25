@@ -99,3 +99,22 @@ def test_permission_denied_is_not_an_auth_error():
         bq.lookup_serial(_raising_client(Forbidden("Access Denied")), "AAA111", 12,
                          param_factory=lambda s: None)
     assert not isinstance(info.value, bq.AuthError)
+
+
+def test_retryable_token_refresh_failure_is_not_an_auth_error():
+    # Google's token endpoint having an outage must not trigger reauth: that
+    # would stop polling until the user re-pastes a key that was never bad
+    from google.auth.exceptions import RefreshError
+    exc = RefreshError("temporarily_unavailable", retryable=True)
+    with pytest.raises(bq.QueryError) as info:
+        bq.fetch_latest(_raising_client(exc), [1001], 12)
+    assert not isinstance(info.value, bq.AuthError)
+
+
+def test_network_failure_is_not_an_auth_error():
+    from google.auth.exceptions import TransportError
+    from google.api_core.exceptions import ServiceUnavailable
+    for exc in (TransportError("connection reset"), ServiceUnavailable("503")):
+        with pytest.raises(bq.QueryError) as info:
+            bq.fetch_latest(_raising_client(exc), [1001], 12)
+        assert not isinstance(info.value, bq.AuthError)

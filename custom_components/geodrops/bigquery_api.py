@@ -38,8 +38,12 @@ def _is_auth_error(err: BaseException) -> bool:
     except ImportError:
         return False
     while err is not None:
-        if isinstance(err, (Unauthorized, RefreshError)):
+        if isinstance(err, Unauthorized):
             return True
+        if isinstance(err, RefreshError):
+            # google-auth marks token-endpoint outages (5xx, 429,
+            # temporarily_unavailable) retryable; the key itself is fine then
+            return not getattr(err, "retryable", False)
         err = err.__cause__
     return False
 
