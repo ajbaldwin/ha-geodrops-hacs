@@ -92,6 +92,10 @@ if [ -z "$ci" ]; then
   problem "no CI runs found for ${SHA:0:7}"
 else
   while IFS='|' read -r name status conclusion; do
+    # inside .github/workflows/publish.yml, that run is itself in progress
+    if [ -n "${GITHUB_WORKFLOW:-}" ] && [ "$name" = "$GITHUB_WORKFLOW" ]; then
+      continue
+    fi
     if [ "$status" != completed ]; then
       problem "CI '$name' is still $status"
     elif [ "$conclusion" != success ]; then
