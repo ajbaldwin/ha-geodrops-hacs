@@ -65,6 +65,14 @@ CHANGELOG sections:
    titled from the CHANGELOG heading. `--dry-run` runs every check and shows
    the notes without publishing.
 
+   **Or publish from GitHub** (no local `gh` needed): Actions → **Publish
+   release** → Run workflow on `main`. It runs the same `tools/release.sh`;
+   `dry_run` is on by default, so run it once as a dry run, check the log, then
+   run it again with `dry_run` off. A release created this way doesn't trigger
+   the release guard below (GitHub doesn't start workflows from a workflow's
+   own token), so the job runs `tools/check_release.sh` itself and fails if the
+   release is inconsistent.
+
 3. **Verify in HACS.** After the release publishes, HACS should offer the new
    version as an update (a beta only with the Pre-release switch on) within
    its normal refresh window.
