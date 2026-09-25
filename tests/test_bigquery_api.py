@@ -65,3 +65,37 @@ def test_lookup_serial_returns_reading_or_none():
     assert r.device_id == 1001
     empty = FakeClient([])
     assert bq.lookup_serial(empty, "ZZZ999", 12, param_factory=lambda s: None) is None
+
+
+def _raising_client(exc):
+    class RaisingClient:
+        def query(self, sql, job_config=None):
+            raise exc
+    return RaisingClient()
+
+
+@pytest.mark.parametrize("exc", [
+    __import__("google.auth.exceptions", fromlist=["RefreshError"]).RefreshError(
+        "invalid_grant: Invalid JWT Signature."),
+    __import__("google.api_core.exceptions", fromlist=["Unauthorized"]).Unauthorized("401"),
+])
+def test_rejected_key_raises_auth_error(exc):
+    with pytest.raises(bq.AuthError):
+        bq.fetch_latest(_raising_client(exc), [1001], 12)
+
+
+def test_auth_error_found_through_exception_cause():
+    from google.auth.exceptions import RefreshError
+    wrapper = RuntimeError("transport failed")
+    wrapper.__cause__ = RefreshError("invalid_grant")
+    with pytest.raises(bq.AuthError):
+        bq.validate_access(_raising_client(wrapper))
+
+
+def test_permission_denied_is_not_an_auth_error():
+    # 403 is fixed in IAM (or on GeoDrops' side), not by a new key -> keep retrying
+    from google.api_core.exceptions import Forbidden
+    with pytest.raises(bq.QueryError) as info:
+        bq.lookup_serial(_raising_client(Forbidden("Access Denied")), "AAA111", 12,
+                         param_factory=lambda s: None)
+    assert not isinstance(info.value, bq.AuthError)

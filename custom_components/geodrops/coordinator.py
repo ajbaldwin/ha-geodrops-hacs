@@ -4,10 +4,11 @@ from __future__ import annotations
 from datetime import timedelta
 import logging
 
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .bigquery_api import fetch_latest, QueryError
+from .bigquery_api import fetch_latest, AuthError, QueryError
 from . import const
 
 _LOGGER = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ class GeoDropsCoordinator(DataUpdateCoordinator):
         self._last_success = None
         interval = entry.options.get(const.CONF_SCAN_INTERVAL, const.DEFAULT_SCAN_INTERVAL)
         super().__init__(
-            hass, _LOGGER, name="GeoDrops",
+            hass, _LOGGER, name="GeoDrops", config_entry=entry,
             update_interval=timedelta(minutes=interval),
         )
 
@@ -48,6 +49,8 @@ class GeoDropsCoordinator(DataUpdateCoordinator):
             data = await self.hass.async_add_executor_job(
                 fetch_latest, self.client, ids, self.lookback_hours
             )
+        except AuthError as err:
+            raise ConfigEntryAuthFailed(str(err)) from err
         except QueryError as err:
             raise UpdateFailed(str(err)) from err
         self._last_success = dt_util.utcnow()
