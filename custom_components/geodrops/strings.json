@@ -88,7 +88,7 @@
           "lookback_hours": "How far back to search for each probe's latest reading on every poll. Default 12.",
           "staleness_warn_hours": "Log a warning once a probe's data is older than this many hours. Default 6.",
           "staleness_skip_hours": "Mark a probe's sensors unavailable once its data is older than this many hours. Default 12.",
-          "expire_after_minutes": "Also mark sensors unavailable if the integration has not polled successfully within this many minutes. Default 45."
+          "expire_after_minutes": "Also mark sensors unavailable if the integration has not polled successfully within this many minutes. Default 80."
         }
       }
     },
