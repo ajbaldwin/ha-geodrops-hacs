@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.6.0-beta.2 — No more twice-daily "unavailable" blips
+- **Probes stay up through GeoDrops' empty polls.** About twice a day GeoDrops' data briefly comes back empty for a poll, and every probe went "unavailable" for 20 minutes even though nothing was wrong. Each probe now keeps its last reading, and goes unavailable only when its own data hasn't arrived for longer than "Expire after" (80 minutes by default). This applies whether the polls failed or just came back empty.
+
 ## 0.6.0-beta.1 — Replace a dead key without starting over
 - **New key without re-adding probes.** If Google stops accepting your service-account key (deleted, revoked, or its service account disabled), GeoDrops now asks you to re-authenticate on the Devices & Services page — paste a new key and you're back, probes and settings intact. Previously it retried forever and the only fix was deleting and re-adding the integration.
 - **Reconfigure.** Change the GCP project or rotate the key any time from the integration's ⋮ menu → Reconfigure. Leave the key blank to keep the current one.
