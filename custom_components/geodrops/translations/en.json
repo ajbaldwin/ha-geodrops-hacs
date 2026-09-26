@@ -84,11 +84,11 @@
           "expire_after_minutes": "Expire after (minutes)"
         },
         "data_description": {
-          "scan_interval_minutes": "How often to query BigQuery for new readings. Default 20.",
-          "lookback_hours": "How far back to search for each probe's latest reading on every poll. Default 12.",
-          "staleness_warn_hours": "Log a warning once a probe's data is older than this many hours. Default 6.",
-          "staleness_skip_hours": "Mark a probe's sensors unavailable once its data is older than this many hours. Default 12.",
-          "expire_after_minutes": "Also mark sensors unavailable if the integration has not polled successfully within this many minutes. Default 80."
+          "scan_interval_minutes": "How often to query BigQuery for new readings. Default 20, minimum 5.",
+          "lookback_hours": "How far back to search for each probe's latest reading on every poll. Default 12, 1 to 168.",
+          "staleness_warn_hours": "Log a warning once a probe's data is older than this many hours. Default 6, at most \"Mark unavailable after\".",
+          "staleness_skip_hours": "Mark a probe's sensors unavailable once its latest reading is older than this many hours. Default 12, 1 to 168.",
+          "expire_after_minutes": "Also mark sensors unavailable if a probe's data has not come back from a poll within this many minutes. Must be longer than the poll interval. Default 80."
         }
       }
     },
@@ -96,7 +96,61 @@
       "cannot_connect": "Could not query BigQuery.",
       "device_not_found": "No readings found for that serial in the last 12 hours.",
       "duplicate_device": "That serial is already configured.",
-      "invalid_auth": "Google rejected the stored service-account key. Update it via the integration's Reconfigure option, then try again."
+      "invalid_auth": "Google rejected the stored service-account key. Update it via the integration's Reconfigure option, then try again.",
+      "invalid_credentials": "The stored service-account JSON could not be parsed. Paste a new key via the integration's Reconfigure option, then try again.",
+      "warn_above_skip": "Must not be more than \"Mark unavailable after\".",
+      "expire_below_interval": "Must be longer than the poll interval, or sensors go unavailable between polls."
+    },
+    "abort": {
+      "no_devices": "There are no probes to remove."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "moisture": {
+        "name": "Dominant Moisture"
+      },
+      "moisture_state": {
+        "name": "Moisture State",
+        "state": {
+          "dry": "Dry",
+          "dry_plus": "Dry+",
+          "moist": "Moist",
+          "moist_plus": "Moist+",
+          "wet": "Wet",
+          "wet_plus": "Wet+"
+        }
+      },
+      "moisture_depth": {
+        "name": "Moisture Depth {depth}"
+      },
+      "qcn_depth": {
+        "name": "Quality Depth {depth}",
+        "state": {
+          "bad": "Bad",
+          "poor": "Poor",
+          "good": "Good",
+          "training": "Training"
+        }
+      },
+      "battery": {
+        "name": "Battery"
+      },
+      "sync_delay": {
+        "name": "Sync Delay"
+      },
+      "surface_temperature": {
+        "name": "Surface Temperature"
+      },
+      "temperature_depth": {
+        "name": "Temperature Depth {depth}"
+      },
+      "sun_7d": {
+        "name": "Avg. 7-Day Sun"
+      },
+      "last_reading": {
+        "name": "Last Reading"
+      }
     }
   }
 }
