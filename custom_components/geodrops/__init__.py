@@ -12,8 +12,10 @@ from .coordinator import GeoDropsCoordinator
 
 PLATFORMS = [Platform.SENSOR]
 
+type GeoDropsConfigEntry = ConfigEntry[GeoDropsCoordinator]
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+
+async def async_setup_entry(hass: HomeAssistant, entry: GeoDropsConfigEntry) -> bool:
     try:
         client = await hass.async_add_executor_job(
             make_client,
@@ -25,20 +27,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         raise ConfigEntryAuthFailed(str(err)) from err
 
     coordinator = GeoDropsCoordinator(hass, entry, client)
-    await coordinator.async_config_entry_first_refresh()
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except Exception:
+        # setup retries with a fresh client, so don't leak this one's HTTP session
+        await hass.async_add_executor_job(client.close)
+        raise
 
-    hass.data.setdefault(const.DOMAIN, {})[entry.entry_id] = coordinator
+    # Options changes reload through the options flow (OptionsFlowWithReload)
+    # and key/project changes through async_update_reload_and_abort, so no
+    # update listener: one would reload a second time.
+    entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    entry.async_on_unload(entry.add_update_listener(_reload))
     return True
 
 
-async def _reload(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    await hass.config_entries.async_reload(entry.entry_id)
-
-
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: GeoDropsConfigEntry) -> bool:
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
-        hass.data.get(const.DOMAIN, {}).pop(entry.entry_id, None)
+        await hass.async_add_executor_job(entry.runtime_data.client.close)
     return unloaded

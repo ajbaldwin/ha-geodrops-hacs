@@ -1,4 +1,4 @@
-"""GeoDrops sensor platform: 15 sensors per probe."""
+"""GeoDrops sensor platform: 16 sensors per probe."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -15,52 +15,62 @@ from homeassistant.util import dt as dt_util
 
 from . import const
 from .transform import (
-    DeviceReading, all_training, classify_staleness,
-    qcn_to_state, qcn_to_icon, moisture_index_to_state, moisture_index_to_icon,
+    DeviceReading, all_training, classify_staleness, data_age_hours,
+    qcn_to_state, moisture_index_to_state,
     QCN_OPTIONS, MOISTURE_STATE_OPTIONS,
 )
 
 
 @dataclass(frozen=True)
 class SensorSpec:
-    suffix: str
-    name: str
+    suffix: str            # unique-id suffix; never change (entities would be re-created)
+    translation_key: str   # name (and enum state labels) in strings.json, icons in icons.json
     value: Callable[[DeviceReading], object]
     device_class: Optional[str] = None
     unit: Optional[str] = None
     state_class: Optional[str] = None
     options: Optional[list] = None
-    icon: Optional[Callable[[DeviceReading], str]] = None
+    placeholders: Optional[dict] = None   # fills {depth} etc. in the translated name
     moisture_gated: bool = False   # None when device is all-training
 
 
 _PCT = dict(device_class=SensorDeviceClass.MOISTURE, unit="%", state_class=SensorStateClass.MEASUREMENT)
 _TEMP = dict(device_class=SensorDeviceClass.TEMPERATURE, unit="°C", state_class=SensorStateClass.MEASUREMENT)
+_QCN = dict(device_class=SensorDeviceClass.ENUM, options=QCN_OPTIONS)
+
+
+def _depth(n):
+    return {"depth": str(n)}
+
 
 SENSOR_SPECS = [
-    SensorSpec("moisture", "Dominant Moisture", lambda r: r.moisture_pct, moisture_gated=True, **_PCT),
-    SensorSpec("moisture_state", "Moisture State", lambda r: moisture_index_to_state(r.moisture_index),
+    SensorSpec("moisture", "moisture", lambda r: r.moisture_pct, moisture_gated=True, **_PCT),
+    SensorSpec("moisture_state", "moisture_state",
+               lambda r: moisture_index_to_state(r.moisture_index),
                device_class=SensorDeviceClass.ENUM, options=MOISTURE_STATE_OPTIONS,
-               icon=lambda r: moisture_index_to_icon(r.moisture_index), moisture_gated=True),
-    SensorSpec("moisture_d1", "Moisture Depth 1", lambda r: r.moisture_d1, moisture_gated=True, **_PCT),
-    SensorSpec("moisture_d2", "Moisture Depth 2", lambda r: r.moisture_d2, moisture_gated=True, **_PCT),
-    SensorSpec("moisture_d3", "Moisture Depth 3", lambda r: r.moisture_d3, moisture_gated=True, **_PCT),
-    SensorSpec("qcn_d1", "Quality Depth 1", lambda r: qcn_to_state(r.qcn_d1),
-               device_class=SensorDeviceClass.ENUM, options=QCN_OPTIONS, icon=lambda r: qcn_to_icon(r.qcn_d1)),
-    SensorSpec("qcn_d2", "Quality Depth 2", lambda r: qcn_to_state(r.qcn_d2),
-               device_class=SensorDeviceClass.ENUM, options=QCN_OPTIONS, icon=lambda r: qcn_to_icon(r.qcn_d2)),
-    SensorSpec("qcn_d3", "Quality Depth 3", lambda r: qcn_to_state(r.qcn_d3),
-               device_class=SensorDeviceClass.ENUM, options=QCN_OPTIONS, icon=lambda r: qcn_to_icon(r.qcn_d3)),
-    SensorSpec("battery", "Battery", lambda r: int(round(r.battery_pct)),
+               moisture_gated=True),
+    SensorSpec("moisture_d1", "moisture_depth", lambda r: r.moisture_d1, placeholders=_depth(1),
+               moisture_gated=True, **_PCT),
+    SensorSpec("moisture_d2", "moisture_depth", lambda r: r.moisture_d2, placeholders=_depth(2),
+               moisture_gated=True, **_PCT),
+    SensorSpec("moisture_d3", "moisture_depth", lambda r: r.moisture_d3, placeholders=_depth(3),
+               moisture_gated=True, **_PCT),
+    SensorSpec("qcn_d1", "qcn_depth", lambda r: qcn_to_state(r.qcn_d1), placeholders=_depth(1), **_QCN),
+    SensorSpec("qcn_d2", "qcn_depth", lambda r: qcn_to_state(r.qcn_d2), placeholders=_depth(2), **_QCN),
+    SensorSpec("qcn_d3", "qcn_depth", lambda r: qcn_to_state(r.qcn_d3), placeholders=_depth(3), **_QCN),
+    SensorSpec("battery", "battery",
+               lambda r: None if r.battery_pct is None else int(round(r.battery_pct)),
                device_class=SensorDeviceClass.BATTERY, unit="%", state_class=SensorStateClass.MEASUREMENT),
-    SensorSpec("sync_delay", "Sync Delay", lambda r: r.sync_delay_hours, unit="h",
+    SensorSpec("sync_delay", "sync_delay", lambda r: r.sync_delay_hours, unit="h",
                state_class=SensorStateClass.MEASUREMENT),
-    SensorSpec("temp_surface", "Surface Temperature", lambda r: r.temp_surface, **_TEMP),
-    SensorSpec("temp_d1", "Temperature Depth 1", lambda r: r.temp_d1, **_TEMP),
-    SensorSpec("temp_d2", "Temperature Depth 2", lambda r: r.temp_d2, **_TEMP),
-    SensorSpec("temp_d3", "Temperature Depth 3", lambda r: r.temp_d3, **_TEMP),
-    SensorSpec("sun_7d", "Avg. 7-Day Sun", lambda r: r.sun_7d, unit="h",
-               state_class=SensorStateClass.MEASUREMENT, icon=lambda r: "mdi:white-balance-sunny"),
+    SensorSpec("temp_surface", "surface_temperature", lambda r: r.temp_surface, **_TEMP),
+    SensorSpec("temp_d1", "temperature_depth", lambda r: r.temp_d1, placeholders=_depth(1), **_TEMP),
+    SensorSpec("temp_d2", "temperature_depth", lambda r: r.temp_d2, placeholders=_depth(2), **_TEMP),
+    SensorSpec("temp_d3", "temperature_depth", lambda r: r.temp_d3, placeholders=_depth(3), **_TEMP),
+    SensorSpec("sun_7d", "sun_7d", lambda r: r.sun_7d, unit="h",
+               state_class=SensorStateClass.MEASUREMENT),
+    SensorSpec("last_reading", "last_reading", lambda r: r.read_at,
+               device_class=SensorDeviceClass.TIMESTAMP),
 ]
 
 
@@ -74,7 +84,9 @@ class GeoDropsSensor(CoordinatorEntity, SensorEntity):
         self._suffix = spec.suffix
         serial = device[const.DEV_SERIAL]
         self._attr_unique_id = f"{serial}_{spec.suffix}"
-        self._attr_name = spec.name
+        self._attr_translation_key = spec.translation_key
+        if spec.placeholders:
+            self._attr_translation_placeholders = spec.placeholders
         self._attr_device_class = spec.device_class
         self._attr_native_unit_of_measurement = spec.unit
         self._attr_state_class = spec.state_class
@@ -85,7 +97,7 @@ class GeoDropsSensor(CoordinatorEntity, SensorEntity):
             name=device[const.DEV_NAME],
             manufacturer="GeoDrops",
             model="GeoDrops Droplet",
-            sw_version="vA2.03.r3",
+            serial_number=serial,
         )
         area_id = device.get(const.DEV_AREA)
         if area_id:
@@ -105,7 +117,8 @@ class GeoDropsSensor(CoordinatorEntity, SensorEntity):
             return False
         skip = self.coordinator.entry.options.get(const.CONF_SKIP_HOURS, const.DEFAULT_SKIP_HOURS)
         warn = self.coordinator.entry.options.get(const.CONF_WARN_HOURS, const.DEFAULT_WARN_HOURS)
-        if classify_staleness(r.sync_delay_hours, warn, skip) == "skip":
+        age = data_age_hours(r, dt_util.utcnow())
+        if age is not None and classify_staleness(age, warn, skip) == "skip":
             return False
         expire = self.coordinator.entry.options.get(
             const.CONF_EXPIRE_MINUTES, const.DEFAULT_EXPIRE_MINUTES)
@@ -123,20 +136,13 @@ class GeoDropsSensor(CoordinatorEntity, SensorEntity):
             return None
         return self._spec.value(r)
 
-    @property
-    def icon(self):
-        r = self._reading
-        if self._spec.icon and r is not None:
-            return self._spec.icon(r)
-        return None
-
 
 def build_sensors(coordinator, device):
     return [GeoDropsSensor(coordinator, device, spec) for spec in SENSOR_SPECS]
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    coordinator = hass.data[const.DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     entities = []
     for device in entry.options.get(const.CONF_DEVICES, []):
         entities.extend(build_sensors(coordinator, device))

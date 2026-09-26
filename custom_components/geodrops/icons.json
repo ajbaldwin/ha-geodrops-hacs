@@ -1,0 +1,29 @@
+{
+  "entity": {
+    "sensor": {
+      "moisture_state": {
+        "default": "mdi:help-circle",
+        "state": {
+          "wet_plus": "mdi:water",
+          "wet": "mdi:water-outline",
+          "moist_plus": "mdi:water-percent",
+          "moist": "mdi:water-percent-alert",
+          "dry_plus": "mdi:water-alert-outline",
+          "dry": "mdi:water-off"
+        }
+      },
+      "qcn_depth": {
+        "default": "mdi:help-circle",
+        "state": {
+          "good": "mdi:check-circle",
+          "poor": "mdi:alert",
+          "bad": "mdi:close-circle",
+          "training": "mdi:school"
+        }
+      },
+      "sun_7d": {
+        "default": "mdi:white-balance-sunny"
+      }
+    }
+  }
+}

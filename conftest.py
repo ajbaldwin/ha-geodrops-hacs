@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -26,6 +26,12 @@ def mock_setup_entry():
     by test_coordinator.py and test_sensor.py). Without this fixture, HA
     auto-sets-up a newly created config entry with the real (unmocked)
     async_setup_entry, which fails against the flow tests' fake credentials
-    and crashes fixture teardown."""
-    with patch("custom_components.geodrops.async_setup_entry", return_value=True):
+    and crashes fixture teardown. The stub still sets runtime_data, because
+    the real async_unload_entry runs at hass teardown (after this patch ends)
+    and closes the client the real setup would have stored there."""
+    async def _setup(hass, entry):
+        entry.runtime_data = MagicMock()
+        return True
+
+    with patch("custom_components.geodrops.async_setup_entry", side_effect=_setup):
         yield

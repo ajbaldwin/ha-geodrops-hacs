@@ -103,6 +103,8 @@ def make_client(project_id: str, credentials_json: str):
 
     try:
         info = json.loads(credentials_json)
+        if not isinstance(info, dict):
+            raise ValueError("expected a JSON object (the service-account key file)")
         creds = service_account.Credentials.from_service_account_info(info)
     except (ValueError, KeyError) as err:
         raise CredentialsError(str(err)) from err
