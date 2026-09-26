@@ -15,13 +15,13 @@ def _reading(all_training=False):
                          battery_pct=88.0, sun_7d=6.0, qcn_d1=q, qcn_d2=q, qcn_d3=q)
 
 
-def _coord(reading, skip_hours=12, last_success_time=None):
+def _coord(reading, skip_hours=12, seen=None):
     c = MagicMock()
     c.reading.return_value = reading
     c.entry.options = {const.CONF_SKIP_HOURS: skip_hours}
-    # default: the feed just succeeded, so tests that don't care about
+    # default: the device's row just arrived, so tests that don't care about
     # FIX 8's expire_after_minutes wiring stay within the window
-    c.last_success_time = last_success_time if last_success_time is not None else dt_util.utcnow()
+    c.reading_time.return_value = seen if seen is not None else dt_util.utcnow()
     return c
 
 
@@ -57,28 +57,28 @@ def test_unavailable_when_stale_beyond_skip():
 
 def test_unavailable_when_feed_is_stale_even_if_reading_is_fresh():
     # FIX 8 "both signals": expire_after_minutes (default 80) must also gate
-    # availability -- a quiet feed (no successful coordinator update recently)
-    # makes sensors unavailable even though the last reading itself is fresh.
-    stale_success = dt_util.utcnow() - timedelta(hours=2)
-    coord = _coord(_reading(), last_success_time=stale_success)
+    # availability -- a device whose row has not come back from any poll recently
+    # (failed polls, or polls that return no row for it) goes unavailable even
+    # though the last reading's own sync delay is fresh.
+    coord = _coord(_reading(), seen=dt_util.utcnow() - timedelta(hours=2))
     sensors = build_sensors(coord, {"serial": "AAA111", "device_id": 1001, "name": "Front"})
     assert sensors[0].available is False
 
 
 def test_default_expire_rides_out_three_missed_polls():
-    # default 80 min at the default 20 min poll: 3 consecutive failed polls
-    # (last success 60-79 min ago) keep sensors up; the 4th makes them unavailable
+    # default 80 min at the default 20 min poll: 3 consecutive polls without the
+    # device's row (failed or empty) keep sensors up; the 4th makes them unavailable
     assert const.DEFAULT_EXPIRE_MINUTES == 80
     device = {"serial": "AAA111", "device_id": 1001, "name": "Front"}
-    recent = _coord(_reading(), last_success_time=dt_util.utcnow() - timedelta(minutes=75))
+    recent = _coord(_reading(), seen=dt_util.utcnow() - timedelta(minutes=75))
     assert build_sensors(recent, device)[0].available is True
-    old = _coord(_reading(), last_success_time=dt_util.utcnow() - timedelta(minutes=85))
+    old = _coord(_reading(), seen=dt_util.utcnow() - timedelta(minutes=85))
     assert build_sensors(old, device)[0].available is False
 
 
 def test_unavailable_when_never_successfully_updated():
     coord = _coord(_reading())
-    coord.last_success_time = None   # no successful update has ever landed
+    coord.reading_time.return_value = None   # no poll has ever returned this device
     sensors = build_sensors(coord, {"serial": "AAA111", "device_id": 1001, "name": "Front"})
     assert sensors[0].available is False
 
