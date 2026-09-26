@@ -6,3 +6,4 @@ config.yaml
 *.json.key
 .env
 .superpowers/
+.coverage

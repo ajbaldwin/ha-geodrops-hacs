@@ -2,7 +2,7 @@
 
 A native Home Assistant integration for [GeoDrops](https://geodrops.io/) soil
 moisture probes. It reads your sensor data straight out of BigQuery and
-exposes each probe as a Home Assistant device with 15 sensors — no MQTT
+exposes each probe as a Home Assistant device with 16 sensors — no MQTT
 bridge, no external service to run, no YAML to hand-edit. Everything is
 configured through the UI.
 
@@ -122,7 +122,7 @@ in GCP.
 
 ## Sensors
 
-Each probe becomes one Home Assistant device with 15 sensors:
+Each probe becomes one Home Assistant device with 16 sensors:
 
 | Sensor | Description |
 | --- | --- |
@@ -141,12 +141,29 @@ Each probe becomes one Home Assistant device with 15 sensors:
 | Temperature Depth 2 | Soil temperature (°C) at depth sensor 2 |
 | Temperature Depth 3 | Soil temperature (°C) at depth sensor 3 |
 | Avg. 7-Day Sun | 7-day trailing average sun exposure (hours) |
+| Last Reading | When the probe took its latest reading (timestamp) |
 
 Moisture-related sensors report `unknown` (rather than a misleading value)
 while a probe is still in its factory training period and hasn't produced a
-calibrated moisture reading yet. A probe whose last sync is older than the
-configured "mark unavailable after" threshold goes unavailable entirely, and
-one past the "warn after" threshold is still reported but flagged as stale.
+calibrated moisture reading yet. Any other value GeoDrops doesn't report
+(for example a missing temperature) shows as `unknown`, never as 0. A probe
+whose latest reading is older than the configured "mark unavailable after"
+threshold (judged by both its sync delay and the reading's own timestamp)
+goes unavailable entirely. Once a probe's data is older than "warn after", a
+warning is written to the Home Assistant log (once, until it reports again).
+
+### States for automations
+
+Moisture State and the three Quality sensors show friendly labels in the UI,
+but their raw states (what automations, templates and scripts compare
+against) are stable keys:
+
+| Sensor | Raw states (UI label) |
+| --- | --- |
+| Moisture State | `dry` (Dry), `dry_plus` (Dry+), `moist` (Moist), `moist_plus` (Moist+), `wet` (Wet), `wet_plus` (Wet+) |
+| Quality Depth 1–3 | `bad` (Bad), `poor` (Poor), `good` (Good), `training` (Training) |
+
+A value GeoDrops doesn't classify is Home Assistant's own `unknown`.
 
 ## Polling and cost
 

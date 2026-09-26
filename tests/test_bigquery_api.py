@@ -130,3 +130,41 @@ def test_every_query_is_bounded_to_the_timeout():
     assert kw["api_timeout"] <= bq.QUERY_TIMEOUT
     assert kw["retry"].timeout == bq.QUERY_TIMEOUT       # library default: 600 s
     assert kw["job_retry"].timeout == bq.QUERY_TIMEOUT   # library default: 2400 s
+
+
+@pytest.mark.parametrize("raw", ["not json", '"a string"', "[]", "123", "null", "{}"])
+def test_make_client_rejects_unusable_keys_as_credentials_error(raw):
+    # valid JSON that isn't a key object used to escape as AttributeError,
+    # which the setup form shows as "Unknown error"
+    with pytest.raises(bq.CredentialsError):
+        bq.make_client("p", raw)
+
+
+def test_build_latest_query_refuses_non_numeric_ids():
+    # device ids are interpolated, so anything but an int must never reach the SQL
+    with pytest.raises(ValueError):
+        bq.build_latest_query(["1001) OR (1=1"], 12)
+
+
+def test_default_param_factory_binds_the_serial():
+    config = bq._default_param_factory("AAA111")
+    (param,) = config.query_parameters
+    assert (param.name, param.type_, param.value) == ("serial", "STRING", "AAA111")
+
+
+def test_make_client_builds_a_client_for_a_well_formed_key():
+    import json
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    pem = rsa.generate_private_key(public_exponent=65537, key_size=2048).private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption()).decode()
+    key = json.dumps({"type": "service_account", "project_id": "p", "private_key_id": "1",
+                      "private_key": pem, "client_email": "sa@p.iam.gserviceaccount.com",
+                      "token_uri": "https://oauth2.googleapis.com/token"})
+    client = bq.make_client("billing-project", key)
+    try:
+        assert client.project == "billing-project"
+        assert client._credentials.service_account_email == "sa@p.iam.gserviceaccount.com"
+    finally:
+        client.close()

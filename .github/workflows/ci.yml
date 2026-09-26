@@ -8,4 +8,4 @@ jobs:
       - uses: actions/setup-python@v6
         with: { python-version: "3.13" }
       - run: pip install -r requirements-dev.txt google-cloud-bigquery==3.45.2
-      - run: pytest -q
+      - run: pytest -q --cov=custom_components/geodrops --cov-report=term-missing

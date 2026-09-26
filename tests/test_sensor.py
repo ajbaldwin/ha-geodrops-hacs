@@ -25,8 +25,8 @@ def _coord(reading, skip_hours=12, seen=None):
     return c
 
 
-def test_15_sensors_per_device():
-    assert len(SENSOR_SPECS) == 15
+def test_16_sensors_per_device():
+    assert len(SENSOR_SPECS) == 16
 
 
 def test_moisture_value_and_state():
@@ -34,9 +34,9 @@ def test_moisture_value_and_state():
     sensors = build_sensors(coord, {"serial": "AAA111", "device_id": 1001, "name": "Front"})
     by_suffix = {s._suffix: s for s in sensors}
     assert by_suffix["moisture"].native_value == 42.5
-    assert by_suffix["moisture_state"].native_value == "Moist+"
+    assert by_suffix["moisture_state"].native_value == "moist_plus"
     assert by_suffix["battery"].native_value == 88   # rounded int
-    assert by_suffix["qcn_d1"].native_value == "Good"
+    assert by_suffix["qcn_d1"].native_value == "good"
 
 
 def test_moisture_unknown_when_all_training():
@@ -49,7 +49,6 @@ def test_moisture_unknown_when_all_training():
 
 def test_unavailable_when_stale_beyond_skip():
     coord = _coord(_reading())
-    coord.reading.return_value = _reading()
     coord.reading.return_value = DeviceReading(**{**_reading().__dict__, "sync_delay_hours": 99.0})
     sensors = build_sensors(coord, {"serial": "AAA111", "device_id": 1001, "name": "Front"})
     assert sensors[0].available is False
@@ -94,3 +93,72 @@ async def test_device_info_area_and_model(hass):
     assert info["suggested_area"] == "Backyard"
     assert info["model"] == "GeoDrops Droplet"
     assert info["name"] == "Front"
+    assert info["serial_number"] == "AAA111"
+    assert "sw_version" not in info   # was hard-coded; GeoDrops doesn't report firmware
+
+
+DEVICE = {"serial": "AAA111", "device_id": 1001, "name": "Front"}
+
+
+def _sensor(coord, suffix):
+    return {s._suffix: s for s in build_sensors(coord, DEVICE)}[suffix]
+
+
+def _with(**changes):
+    return DeviceReading(**{**_reading().__dict__, **changes})
+
+
+def test_missing_values_read_unknown_not_zero():
+    coord = _coord(_with(battery_pct=None, temp_d1=None, moisture_pct=None))
+    assert _sensor(coord, "battery").native_value is None
+    assert _sensor(coord, "temp_d1").native_value is None
+    assert _sensor(coord, "moisture").native_value is None
+
+
+def test_unknown_sync_delay_does_not_make_the_probe_unavailable():
+    coord = _coord(_with(sync_delay_hours=None))
+    assert _sensor(coord, "moisture").available is True
+
+
+def test_unavailable_when_reading_timestamp_is_older_than_skip():
+    # the row's sync delay is frozen at 2 h, but the reading itself is 13 h old
+    old = dt_util.utcnow() - timedelta(hours=13)
+    coord = _coord(_with(read_at=old), skip_hours=12)
+    assert _sensor(coord, "moisture").available is False
+
+
+def test_available_when_reading_timestamp_is_recent():
+    recent = dt_util.utcnow() - timedelta(hours=3)
+    coord = _coord(_with(read_at=recent), skip_hours=12)
+    assert _sensor(coord, "moisture").available is True
+
+
+def test_last_reading_sensor_reports_the_reading_timestamp():
+    from homeassistant.components.sensor import SensorDeviceClass
+    when = dt_util.utcnow() - timedelta(minutes=30)
+    sensor = _sensor(_coord(_with(read_at=when)), "last_reading")
+    assert sensor.device_class == SensorDeviceClass.TIMESTAMP
+    assert sensor.native_value == when
+    assert sensor.unique_id == "AAA111_last_reading"
+
+
+def test_last_reading_is_reported_even_while_training():
+    when = dt_util.utcnow()
+    sensor = _sensor(_coord(DeviceReading(**{**_reading(all_training=True).__dict__,
+                                             "read_at": when})), "last_reading")
+    assert sensor.native_value == when
+
+
+def test_no_reading_yet_is_unavailable_and_unknown():
+    coord = _coord(None)
+    sensor = _sensor(coord, "moisture_state")
+    assert sensor.available is False
+    assert sensor.native_value is None
+
+
+def test_depth_sensors_share_a_translation_with_a_depth_placeholder():
+    coord = _coord(_reading())
+    sensor = _sensor(coord, "qcn_d2")
+    assert sensor.translation_key == "qcn_depth"
+    assert sensor.translation_placeholders == {"depth": "2"}
+    assert sensor.unique_id == "AAA111_qcn_d2"   # unchanged, so entities carry over

@@ -105,3 +105,72 @@ async def test_removed_device_is_dropped(hass, monkeypatch):
     coord.data = await coord._async_update_data()
     assert coord.reading(1001) is None
     assert coord.reading_time(1001) is None
+
+
+async def test_no_probes_skips_the_query(hass, monkeypatch):
+    def _fail(c, ids, lb):
+        raise AssertionError("an empty deviceId IN () query is invalid SQL")
+
+    monkeypatch.setattr("custom_components.geodrops.coordinator.fetch_latest", _fail)
+    entry = MagicMock()
+    entry.options = {const.CONF_DEVICES: []}
+    coord = GeoDropsCoordinator(hass, entry, MagicMock())
+    assert await coord._async_update_data() == {}
+
+
+def _aged_reading(device_id, hours_old):
+    from homeassistant.util import dt as dt_util
+    from datetime import timedelta
+    return DeviceReading(**{**_reading(device_id, 40.0).__dict__,
+                            "read_at": dt_util.utcnow() - timedelta(hours=hours_old)})
+
+
+def _stale_warnings(caplog):
+    return [r for r in caplog.records
+            if r.levelname == "WARNING" and "has not reported" in r.getMessage()]
+
+
+async def _poll(coord, monkeypatch, rows):
+    monkeypatch.setattr("custom_components.geodrops.coordinator.fetch_latest",
+                        lambda c, ids, lb: rows)
+    coord.data = await coord._async_update_data()
+
+
+async def test_fresh_probe_logs_no_staleness_warning(hass, monkeypatch, caplog):
+    coord = GeoDropsCoordinator(hass, _two_device_entry(), MagicMock())
+    await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 2)})
+    assert _stale_warnings(caplog) == []
+
+
+async def test_probe_past_warn_after_is_logged_once(hass, monkeypatch, caplog):
+    coord = GeoDropsCoordinator(hass, _two_device_entry(), MagicMock())   # warn after 6 h
+    await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 7)})
+    await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 7.3)})
+    (warning,) = _stale_warnings(caplog)
+    assert "Front" in warning.getMessage() and "AAA111" in warning.getMessage()
+
+
+async def test_probe_past_skip_is_also_logged(hass, monkeypatch, caplog):
+    coord = GeoDropsCoordinator(hass, _two_device_entry(), MagicMock())
+    await _poll(coord, monkeypatch, {1002: _aged_reading(1002, 20)})
+    (warning,) = _stale_warnings(caplog)
+    assert "Back" in warning.getMessage()
+
+
+async def test_warn_after_setting_is_honoured(hass, monkeypatch, caplog):
+    entry = _two_device_entry()
+    entry.options[const.CONF_WARN_HOURS] = 3
+    coord = GeoDropsCoordinator(hass, entry, MagicMock())
+    await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 4)})
+    assert len(_stale_warnings(caplog)) == 1
+
+
+async def test_recovered_probe_is_logged_and_can_warn_again(hass, monkeypatch, caplog):
+    coord = GeoDropsCoordinator(hass, _two_device_entry(), MagicMock())
+    await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 7)})
+    caplog.clear()
+    await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 0.5)})
+    assert any("reporting again" in r.getMessage() and r.levelname == "INFO"
+               for r in caplog.records)
+    await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 8)})
+    assert len(_stale_warnings(caplog)) == 1

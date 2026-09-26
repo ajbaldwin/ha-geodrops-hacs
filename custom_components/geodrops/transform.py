@@ -2,74 +2,91 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Optional
 
-_QCN_STATE = {2: "Good", 1: "Poor", 0: "Bad", -1: "Training"}
-_QCN_ICON = {2: "mdi:check-circle", 1: "mdi:alert", 0: "mdi:close-circle", -1: "mdi:school"}
-QCN_OPTIONS = ["Bad", "Poor", "Good", "Training", "Unknown"]
+# Enum states are translation keys (see strings.json "entity" and icons.json):
+# the UI shows "Good", "Wet+", ... while automations compare the stable keys.
+# An unmapped value is None, i.e. Home Assistant's own "unknown".
+_QCN_STATE = {2: "good", 1: "poor", 0: "bad", -1: "training"}
+QCN_OPTIONS = ["bad", "poor", "good", "training"]
 
-_MI_STATE = {5: "Wet+", 4: "Wet", 3: "Moist+", 2: "Moist", 1: "Dry+", 0: "Dry", -1: "Unknown"}
-_MI_ICON = {
-    5: "mdi:water", 4: "mdi:water-outline", 3: "mdi:water-percent",
-    2: "mdi:water-percent-alert", 1: "mdi:water-alert-outline", 0: "mdi:water-off",
-    -1: "mdi:help-circle",
-}
-MOISTURE_STATE_OPTIONS = ["Dry", "Dry+", "Moist", "Moist+", "Wet", "Wet+", "Unknown"]
-
-
-def qcn_to_state(value) -> str:
-    return _QCN_STATE.get(value, "Unknown")
+_MI_STATE = {5: "wet_plus", 4: "wet", 3: "moist_plus", 2: "moist", 1: "dry_plus", 0: "dry"}
+MOISTURE_STATE_OPTIONS = ["dry", "dry_plus", "moist", "moist_plus", "wet", "wet_plus"]
 
 
-def qcn_to_icon(value) -> str:
-    return _QCN_ICON.get(value, "mdi:help-circle")
+def qcn_to_state(value) -> Optional[str]:
+    return _QCN_STATE.get(value)
 
 
-def moisture_index_to_state(value) -> str:
-    return _MI_STATE.get(value, "Unknown")
+def moisture_index_to_state(value) -> Optional[str]:
+    return _MI_STATE.get(value)
 
 
-def moisture_index_to_icon(value) -> str:
-    return _MI_ICON.get(value, "mdi:help-circle")
-
-
-def classify_staleness(sync_delay_hours: float, warn_hours: int, skip_hours: int) -> str:
+def classify_staleness(age_hours: float, warn_hours: int, skip_hours: int) -> str:
     """'skip' above skip_hours, 'warn' above warn_hours, else 'ok'. Strict > (matches source)."""
-    if sync_delay_hours > skip_hours:
+    if age_hours > skip_hours:
         return "skip"
-    if sync_delay_hours > warn_hours:
+    if age_hours > warn_hours:
         return "warn"
     return "ok"
 
 
+def data_age_hours(reading: "DeviceReading", now: datetime) -> Optional[float]:
+    """How old a reading is, in hours: the larger of GeoDrops' sync delay and
+    the time since the reading's own timestamp.
+
+    The sync delay is a number stored in the row, so while GeoDrops keeps
+    serving the same row it stays frozen; the timestamp keeps aging with the
+    clock. None when neither is known.
+    """
+    ages = [reading.sync_delay_hours]
+    if reading.read_at is not None:
+        ages.append((now - reading.read_at).total_seconds() / 3600)
+    ages = [a for a in ages if a is not None]
+    return max(ages) if ages else None
+
+
 @dataclass(frozen=True)
 class DeviceReading:
+    # numeric fields are None when GeoDrops has no value (shown as unknown)
     device_id: int
-    sync_delay_hours: float
+    sync_delay_hours: Optional[float]
     moisture_index: int
-    moisture_pct: float
-    moisture_d1: float
-    moisture_d2: float
-    moisture_d3: float
-    temp_surface: float
-    temp_d1: float
-    temp_d2: float
-    temp_d3: float
-    battery_pct: float
-    sun_7d: float
+    moisture_pct: Optional[float]
+    moisture_d1: Optional[float]
+    moisture_d2: Optional[float]
+    moisture_d3: Optional[float]
+    temp_surface: Optional[float]
+    temp_d1: Optional[float]
+    temp_d2: Optional[float]
+    temp_d3: Optional[float]
+    battery_pct: Optional[float]
+    sun_7d: Optional[float]
     qcn_d1: int
     qcn_d2: int
     qcn_d3: int
+    read_at: Optional[datetime] = None   # when the probe took the reading
 
 
 def _num(row, attr):
-    """Source idiom `row.attr or 0`: missing/None/0 all collapse to 0."""
-    return getattr(row, attr, None) or 0
+    """Missing/None stays None (unknown); a real 0 is kept."""
+    return getattr(row, attr, None)
 
 
 def _qcn(row, attr):
     """QCN/index default is -1 (Training/Unknown) when missing or None."""
     value = getattr(row, attr, None)
     return -1 if value is None else value
+
+
+def _timestamp(row, attr):
+    """GeoDrops' `date` is a TIMESTAMP (tz-aware). A naive one is taken as UTC;
+    anything else (e.g. a plain DATE after a schema change) is unknown."""
+    value = getattr(row, attr, None)
+    if not isinstance(value, datetime):
+        return None
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
 def reading_from_row(row) -> DeviceReading:
@@ -90,6 +107,7 @@ def reading_from_row(row) -> DeviceReading:
         qcn_d1=_qcn(row, "qcnDepth1"),
         qcn_d2=_qcn(row, "qcnDepth2"),
         qcn_d3=_qcn(row, "qcnDepth3"),
+        read_at=_timestamp(row, "date"),
     )
 
 

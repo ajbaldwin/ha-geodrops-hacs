@@ -29,7 +29,7 @@ async def test_full_flow_creates_entry(hass):
              const.CONF_CREDENTIALS_JSON: '{"type":"service_account"}'})
     assert result["step_id"] == "add_device"
 
-    with patch("custom_components.geodrops.config_flow.lookup_serial", return_value=_reading()):
+    with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()),          patch("custom_components.geodrops.config_flow.lookup_serial", return_value=_reading()):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {const.DEV_SERIAL: "aaa111 ", const.DEV_NAME: "Front"})
     assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
@@ -58,7 +58,7 @@ async def test_unknown_serial_shows_error(hass):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             {const.CONF_PROJECT_ID: "p", const.CONF_CREDENTIALS_JSON: '{"type":"x"}'})
-    with patch("custom_components.geodrops.config_flow.lookup_serial", return_value=None):
+    with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()),          patch("custom_components.geodrops.config_flow.lookup_serial", return_value=None):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {const.DEV_SERIAL: "ZZZ999", const.DEV_NAME: "Nope"})
     assert result["errors"] == {"base": "device_not_found"}
@@ -171,3 +171,77 @@ async def test_reconfigure_bad_project_shows_error(hass):
             result["flow_id"], {const.CONF_PROJECT_ID: "typo-project"})
     assert result["errors"] == {"base": "cannot_connect"}
     assert entry.data[const.CONF_PROJECT_ID] == "p"
+
+
+async def _at_add_device(hass, project="p"):
+    result = await hass.config_entries.flow.async_init(
+        const.DOMAIN, context={"source": config_entries.SOURCE_USER})
+    with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()), \
+         patch("custom_components.geodrops.config_flow.validate_access", return_value=None):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {const.CONF_PROJECT_ID: project, const.CONF_CREDENTIALS_JSON: '{"type":"x"}'})
+    assert result["step_id"] == "add_device"
+    return result
+
+
+async def test_already_configured_project_aborts_before_asking_for_a_probe(hass):
+    _existing_entry(hass, project="p")
+    result = await hass.config_entries.flow.async_init(
+        const.DOMAIN, context={"source": config_entries.SOURCE_USER})
+    with patch("custom_components.geodrops.config_flow.make_client") as make_client:
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {const.CONF_PROJECT_ID: " p ", const.CONF_CREDENTIALS_JSON: '{"type":"x"}'})
+    assert result["type"] == data_entry_flow.FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    make_client.assert_not_called()
+
+
+async def test_project_id_is_stripped(hass):
+    result = await _at_add_device(hass, project="  my-project \n")
+    with patch("custom_components.geodrops.config_flow.lookup_serial", return_value=_reading()), \
+         patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {const.DEV_SERIAL: "AAA111", const.DEV_NAME: "Front"})
+    assert result["data"][const.CONF_PROJECT_ID] == "my-project"
+    assert result["result"].unique_id == "my-project"
+
+
+async def test_validation_closes_its_client(hass):
+    client = MagicMock()
+    result = await hass.config_entries.flow.async_init(
+        const.DOMAIN, context={"source": config_entries.SOURCE_USER})
+    with patch("custom_components.geodrops.config_flow.make_client", return_value=client), \
+         patch("custom_components.geodrops.config_flow.validate_access",
+               side_effect=QueryError("503")):
+        await hass.config_entries.flow.async_configure(
+            result["flow_id"], {const.CONF_PROJECT_ID: "p", const.CONF_CREDENTIALS_JSON: "{}"})
+    client.close.assert_called_once()
+
+
+async def test_probe_lookup_closes_its_client_and_saves_area(hass):
+    result = await _at_add_device(hass)
+    client = MagicMock()
+    with patch("custom_components.geodrops.config_flow.make_client", return_value=client), \
+         patch("custom_components.geodrops.config_flow.lookup_serial", return_value=_reading()):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {const.DEV_SERIAL: "AAA111", const.DEV_NAME: "Front", const.DEV_AREA: "garden"})
+    client.close.assert_called_once()
+    assert result["options"][const.CONF_DEVICES] == [
+        {"serial": "AAA111", "device_id": 1001, "name": "Front", "area_id": "garden"}]
+
+
+@pytest.mark.parametrize(("exc", "error"), [
+    (QueryError("503"), "cannot_connect"),
+    (AuthError("invalid_grant"), "invalid_auth"),
+])
+async def test_probe_lookup_errors(hass, exc, error):
+    result = await _at_add_device(hass)
+    with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()), \
+         patch("custom_components.geodrops.config_flow.lookup_serial", side_effect=exc):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {const.DEV_SERIAL: "AAA111", const.DEV_NAME: "Front"})
+    assert result["step_id"] == "add_device"
+    assert result["errors"] == {"base": error}
