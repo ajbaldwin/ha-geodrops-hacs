@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0-beta.3 — Translated states, a Last Reading sensor, safer settings
+- **⚠️ Update automations that check Moisture State or Quality.** These sensors now report stable keys (`moist_plus`, `good`, `training`, …) that the UI still shows as "Moist+", "Good", "Training". Automations and templates comparing against the old text stop matching; the README's "States for automations" table lists every state. An unclassified value is now Home Assistant's own `unknown`.
+- **New Last Reading sensor** shows when each probe last took a reading.
+- **Missing values show as unknown, not 0.** A probe that doesn't report a temperature or battery no longer shows 0 °C / 0 %, which could trigger frost or low-battery automations.
+- **Quiet probes are caught.** A probe now goes unavailable once its latest reading is too old, even while GeoDrops keeps serving that same old reading.
+- **"Warn after" works.** A probe past it gets one warning in the Home Assistant log, and a note when it reports again.
+- **Advanced Options check their values.** The poll interval is at least 5 minutes, "Warn after" can't exceed "Mark unavailable after", and "Expire after" must be longer than the poll interval. A previously saved value outside these limits keeps working until you next save the form.
+- **Clearer setup errors.** Pasting JSON that isn't a key file now says so instead of "Unknown error", and adding an already-configured project stops on the first screen.
+
 ## 0.6.0-beta.2 — No more twice-daily "unavailable" blips
 - **Probes stay up through GeoDrops' empty polls.** About twice a day GeoDrops' data briefly comes back empty for a poll, and every probe went "unavailable" for 20 minutes even though nothing was wrong. Each probe now keeps its last reading, and goes unavailable only when its own data hasn't arrived for longer than "Expire after" (80 minutes by default). This applies whether the polls failed or just came back empty.
 
