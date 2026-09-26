@@ -109,7 +109,7 @@ class GeoDropsSensor(CoordinatorEntity, SensorEntity):
             return False
         expire = self.coordinator.entry.options.get(
             const.CONF_EXPIRE_MINUTES, const.DEFAULT_EXPIRE_MINUTES)
-        last = self.coordinator.last_success_time
+        last = self.coordinator.reading_time(self._device[const.DEV_ID])
         if last is None or dt_util.utcnow() - last > timedelta(minutes=expire):
             return False
         return True
