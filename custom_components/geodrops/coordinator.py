@@ -18,16 +18,15 @@ class GeoDropsCoordinator(DataUpdateCoordinator):
     def __init__(self, hass, entry, client):
         self.entry = entry
         self.client = client
-        self._last_success = None
+        # When each device's row last came back from a poll. A poll can succeed
+        # yet return no row for a device (GeoDrops' table is briefly empty twice
+        # a day), so availability is judged per device, not per poll.
+        self._seen = {}
         interval = entry.options.get(const.CONF_SCAN_INTERVAL, const.DEFAULT_SCAN_INTERVAL)
         super().__init__(
             hass, _LOGGER, name="GeoDrops", config_entry=entry,
             update_interval=timedelta(minutes=interval),
         )
-
-    @property
-    def last_success_time(self):
-        return self._last_success
 
     @property
     def device_ids(self):
@@ -40,10 +39,13 @@ class GeoDropsCoordinator(DataUpdateCoordinator):
     def reading(self, device_id):
         return (self.data or {}).get(device_id)
 
+    def reading_time(self, device_id):
+        return self._seen.get(device_id)
+
     async def _async_update_data(self):
         ids = self.device_ids
         if not ids:
-            self._last_success = dt_util.utcnow()
+            self._seen = {}
             return {}
         try:
             data = await self.hass.async_add_executor_job(
@@ -53,5 +55,16 @@ class GeoDropsCoordinator(DataUpdateCoordinator):
             raise ConfigEntryAuthFailed(str(err)) from err
         except QueryError as err:
             raise UpdateFailed(str(err)) from err
-        self._last_success = dt_util.utcnow()
-        return data
+        now = dt_util.utcnow()
+        for device_id in data:
+            self._seen[device_id] = now
+        # A device missing from this poll keeps its last reading; the sensors'
+        # expire window decides when that is too old to show.
+        previous = self.data or {}
+        merged = {}
+        for device_id in ids:
+            reading = data.get(device_id, previous.get(device_id))
+            if reading is not None:
+                merged[device_id] = reading
+        self._seen = {d: t for d, t in self._seen.items() if d in ids}
+        return merged
