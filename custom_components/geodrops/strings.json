@@ -7,6 +7,10 @@
         "data": {
           "project_id": "GCP project id",
           "credentials_json": "Service-account JSON"
+        },
+        "data_description": {
+          "project_id": "Your own Google Cloud project, where the queries run and are billed. Not GeoDrops' project.",
+          "credentials_json": "The full contents of the JSON key file you downloaded for the service account."
         }
       },
       "add_device": {
@@ -16,6 +20,11 @@
           "serial": "Device serial (mfgSn)",
           "name": "Friendly name",
           "area_id": "Area (optional)"
+        },
+        "data_description": {
+          "serial": "The probe's serial number as shown in the GeoDrops app. It must have reported in the last 12 hours.",
+          "name": "The name of the probe's device in Home Assistant.",
+          "area_id": "The area to put the new device in. You can change it later on the device page."
         }
       },
       "reauth_confirm": {
@@ -23,6 +32,9 @@
         "description": "Google is no longer accepting the stored service-account key for project {project_id} (it was probably deleted, revoked, or its service account was disabled). Create a new JSON key for the service account and paste its full contents below. Your probes and settings are kept.",
         "data": {
           "credentials_json": "Service-account JSON"
+        },
+        "data_description": {
+          "credentials_json": "The full contents of the new JSON key file."
         }
       },
       "reconfigure": {
@@ -33,6 +45,7 @@
           "credentials_json": "Service-account JSON"
         },
         "data_description": {
+          "project_id": "Your own Google Cloud project, where the queries run and are billed. Not GeoDrops' project.",
           "credentials_json": "Leave blank to keep the current key."
         }
       }
@@ -66,6 +79,11 @@
           "serial": "Device serial (mfgSn)",
           "name": "Friendly name",
           "area_id": "Area (optional)"
+        },
+        "data_description": {
+          "serial": "The probe's serial number as shown in the GeoDrops app. It must have reported in the last 12 hours.",
+          "name": "The name of the probe's device in Home Assistant.",
+          "area_id": "The area to put the new device in. You can change it later on the device page."
         }
       },
       "remove_device": {

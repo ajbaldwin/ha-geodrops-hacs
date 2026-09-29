@@ -102,12 +102,30 @@ async def test_settings_reject_out_of_range_values(hass, key, value):
     assert key not in entry.options
 
 
+async def _assert_settings_recover(hass, entry, result):
+    """After a rejected save, valid settings are accepted and stored."""
+    result = await hass.config_entries.options.async_configure(result["flow_id"], _GOOD_SETTINGS)
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert {k: entry.options[k] for k in _GOOD_SETTINGS} == _GOOD_SETTINGS
+
+
+async def _assert_add_device_recovers(hass, entry, result):
+    """After an add-probe error, a known serial is still added."""
+    with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()), \
+         patch("custom_components.geodrops.config_flow.lookup_serial", return_value=_reading()):
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {const.DEV_SERIAL: "CCC333", const.DEV_NAME: "Side"})
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert [d[const.DEV_SERIAL] for d in entry.options[const.CONF_DEVICES]] == ["AAA111", "CCC333"]
+
+
 async def test_settings_reject_warn_above_skip(hass):
     entry, result = await _open(hass, "settings")
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {**_GOOD_SETTINGS, const.CONF_WARN_HOURS: 13})
     assert result["errors"] == {const.CONF_WARN_HOURS: "warn_above_skip"}
     assert const.CONF_WARN_HOURS not in entry.options
+    await _assert_settings_recover(hass, entry, result)
 
 
 async def test_settings_reject_expire_not_longer_than_poll(hass):
@@ -118,6 +136,7 @@ async def test_settings_reject_expire_not_longer_than_poll(hass):
                             const.CONF_EXPIRE_MINUTES: 30})
     assert result["errors"] == {const.CONF_EXPIRE_MINUTES: "expire_below_interval"}
     assert const.CONF_EXPIRE_MINUTES not in entry.options
+    await _assert_settings_recover(hass, entry, result)
 
 
 async def test_settings_rejected_form_keeps_what_was_typed(hass):
@@ -129,12 +148,13 @@ async def test_settings_rejected_form_keeps_what_was_typed(hass):
 
 
 async def test_add_duplicate_serial_is_rejected_without_a_query(hass):
-    _, result = await _open(hass, "add_device")
+    entry, result = await _open(hass, "add_device")
     with patch("custom_components.geodrops.config_flow.make_client") as make_client:
         result = await hass.config_entries.options.async_configure(
             result["flow_id"], {const.DEV_SERIAL: " aaa111", const.DEV_NAME: "Again"})
     assert result["errors"] == {"base": "duplicate_device"}
     make_client.assert_not_called()
+    await _assert_add_device_recovers(hass, entry, result)
 
 
 @pytest.mark.parametrize(("patches", "error"), [
@@ -154,6 +174,7 @@ async def test_add_device_errors(hass, patches, error):
     assert result["step_id"] == "add_device"
     assert result["errors"] == {"base": error}
     assert len(entry.options[const.CONF_DEVICES]) == 1
+    await _assert_add_device_recovers(hass, entry, result)
 
 
 async def test_add_device_saves_id_and_area_and_closes_client(hass):
