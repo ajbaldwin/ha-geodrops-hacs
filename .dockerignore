@@ -1,0 +1,15 @@
+.git
+.github
+.claude
+.superpowers
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+.venv
+.env
+config.yaml
+*.json.key
+*.key
