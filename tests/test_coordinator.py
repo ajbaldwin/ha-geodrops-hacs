@@ -1,9 +1,15 @@
 import pytest
-from unittest.mock import MagicMock
-from custom_components.geodrops.bigquery_api import QueryError
+from unittest.mock import AsyncMock, MagicMock
+from aiogeodrops import DeviceReading, GeoDropsAuthError, GeoDropsQueryError
 from custom_components.geodrops.coordinator import GeoDropsCoordinator
-from custom_components.geodrops.transform import DeviceReading
 from custom_components.geodrops import const
+
+
+def _client(fetch):
+    """A client whose fetch_latest(ids, lookback) returns (or raises from) `fetch`."""
+    client = MagicMock()
+    client.fetch_latest = AsyncMock(side_effect=fetch)
+    return client
 
 
 def _reading(device_id, pct):
@@ -17,9 +23,7 @@ async def test_coordinator_fetches_and_maps(hass, monkeypatch):
     entry = MagicMock()
     entry.options = {const.CONF_DEVICES: [{"serial": "AAA111", "device_id": 1001, "name": "Front"}],
                      const.CONF_SCAN_INTERVAL: 20, const.CONF_LOOKBACK_HOURS: 12}
-    client = MagicMock()
-    monkeypatch.setattr("custom_components.geodrops.coordinator.fetch_latest",
-                        lambda c, ids, lb: {1001: _reading(1001, 42.0)})
+    client = _client(lambda ids, lb: {1001: _reading(1001, 42.0)})
     coord = GeoDropsCoordinator(hass, entry, client)
     assert coord.reading_time(1001) is None
     data = await coord._async_update_data()
@@ -32,12 +36,11 @@ async def test_coordinator_does_not_stamp_success_on_failure(hass, monkeypatch):
     entry = MagicMock()
     entry.options = {const.CONF_DEVICES: [{"serial": "AAA111", "device_id": 1001, "name": "Front"}],
                      const.CONF_SCAN_INTERVAL: 20, const.CONF_LOOKBACK_HOURS: 12}
-    client = MagicMock()
 
-    def _raise(c, ids, lb):
-        raise QueryError("boom")
+    def _raise(ids, lb):
+        raise GeoDropsQueryError("boom")
 
-    monkeypatch.setattr("custom_components.geodrops.coordinator.fetch_latest", _raise)
+    client = _client(_raise)
     coord = GeoDropsCoordinator(hass, entry, client)
     with pytest.raises(Exception):   # UpdateFailed
         await coord._async_update_data()
@@ -46,16 +49,15 @@ async def test_coordinator_does_not_stamp_success_on_failure(hass, monkeypatch):
 
 async def test_coordinator_raises_auth_failed_when_key_rejected(hass, monkeypatch):
     from homeassistant.exceptions import ConfigEntryAuthFailed
-    from custom_components.geodrops.bigquery_api import AuthError
 
     entry = MagicMock()
     entry.options = {const.CONF_DEVICES: [{"serial": "AAA111", "device_id": 1001, "name": "Front"}]}
 
-    def _raise(c, ids, lb):
-        raise AuthError("invalid_grant")
+    def _raise(ids, lb):
+        raise GeoDropsAuthError("invalid_grant")
 
-    monkeypatch.setattr("custom_components.geodrops.coordinator.fetch_latest", _raise)
-    coord = GeoDropsCoordinator(hass, entry, MagicMock())
+    client = _client(_raise)
+    coord = GeoDropsCoordinator(hass, entry, client)
     with pytest.raises(ConfigEntryAuthFailed):
         await coord._async_update_data()
     assert coord.reading_time(1001) is None
@@ -73,9 +75,8 @@ async def test_poll_without_a_device_row_keeps_its_last_reading(hass, monkeypatc
     # but returns nothing. That must not wipe the readings the last poll had.
     polls = iter([{1001: _reading(1001, 42.0), 1002: _reading(1002, 30.0)},
                   {1002: _reading(1002, 31.0)}])
-    monkeypatch.setattr("custom_components.geodrops.coordinator.fetch_latest",
-                        lambda c, ids, lb: next(polls))
-    coord = GeoDropsCoordinator(hass, _two_device_entry(), MagicMock())
+    client = _client(lambda ids, lb: next(polls))
+    coord = GeoDropsCoordinator(hass, _two_device_entry(), client)
     coord.data = await coord._async_update_data()
     first_seen = coord.reading_time(1001)
     coord.data = await coord._async_update_data()
@@ -86,9 +87,8 @@ async def test_poll_without_a_device_row_keeps_its_last_reading(hass, monkeypatc
 
 
 async def test_reading_time_is_none_until_a_row_arrives(hass, monkeypatch):
-    monkeypatch.setattr("custom_components.geodrops.coordinator.fetch_latest",
-                        lambda c, ids, lb: {1001: _reading(1001, 42.0)})
-    coord = GeoDropsCoordinator(hass, _two_device_entry(), MagicMock())
+    client = _client(lambda ids, lb: {1001: _reading(1001, 42.0)})
+    coord = GeoDropsCoordinator(hass, _two_device_entry(), client)
     coord.data = await coord._async_update_data()
     assert coord.reading_time(1001) is not None
     assert coord.reading_time(1002) is None
@@ -96,10 +96,9 @@ async def test_reading_time_is_none_until_a_row_arrives(hass, monkeypatch):
 
 
 async def test_removed_device_is_dropped(hass, monkeypatch):
-    monkeypatch.setattr("custom_components.geodrops.coordinator.fetch_latest",
-                        lambda c, ids, lb: {i: _reading(i, 40.0) for i in ids})
+    client = _client(lambda ids, lb: {i: _reading(i, 40.0) for i in ids})
     entry = _two_device_entry()
-    coord = GeoDropsCoordinator(hass, entry, MagicMock())
+    coord = GeoDropsCoordinator(hass, entry, client)
     coord.data = await coord._async_update_data()
     entry.options = {const.CONF_DEVICES: [{"serial": "BBB222", "device_id": 1002, "name": "Back"}]}
     coord.data = await coord._async_update_data()
@@ -108,13 +107,13 @@ async def test_removed_device_is_dropped(hass, monkeypatch):
 
 
 async def test_no_probes_skips_the_query(hass, monkeypatch):
-    def _fail(c, ids, lb):
+    def _fail(ids, lb):
         raise AssertionError("an empty deviceId IN () query is invalid SQL")
 
-    monkeypatch.setattr("custom_components.geodrops.coordinator.fetch_latest", _fail)
+    client = _client(_fail)
     entry = MagicMock()
     entry.options = {const.CONF_DEVICES: []}
-    coord = GeoDropsCoordinator(hass, entry, MagicMock())
+    coord = GeoDropsCoordinator(hass, entry, client)
     assert await coord._async_update_data() == {}
 
 
@@ -131,8 +130,7 @@ def _stale_warnings(caplog):
 
 
 async def _poll(coord, monkeypatch, rows):
-    monkeypatch.setattr("custom_components.geodrops.coordinator.fetch_latest",
-                        lambda c, ids, lb: rows)
+    coord.client.fetch_latest = AsyncMock(return_value=rows)
     coord.data = await coord._async_update_data()
 
 

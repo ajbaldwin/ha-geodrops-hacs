@@ -15,8 +15,10 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
 from . import const
+from aiogeodrops import DeviceReading
+
 from .transform import (
-    DeviceReading, all_training, classify_staleness, data_age_hours,
+    classify_staleness, data_age_hours,
     qcn_to_state, moisture_index_to_state,
     QCN_OPTIONS, MOISTURE_STATE_OPTIONS,
 )
@@ -151,7 +153,7 @@ class GeoDropsSensor(CoordinatorEntity, SensorEntity):
         r = self._reading
         if r is None:
             return None
-        if self._spec.moisture_gated and all_training(r):
+        if self._spec.moisture_gated and r.all_training:
             return None
         return self._spec.value(r)
 

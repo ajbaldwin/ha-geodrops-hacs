@@ -7,5 +7,5 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with: { python-version: "3.13" }
-      - run: pip install -r requirements-dev.txt google-cloud-bigquery==3.45.2
+      - run: pip install -r requirements-dev.txt aiogeodrops==0.1.0
       - run: pytest -q --cov=custom_components/geodrops --cov-report=term-missing

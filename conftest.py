@@ -8,6 +8,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 pytest_plugins = "pytest_homeassistant_custom_component"
 
+from tests.common import FakeGeoDropsClient  # noqa: E402  (needs the sys.path entry above)
+
 
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations):
@@ -22,13 +24,10 @@ def mock_setup_entry():
     Not autouse: config-flow tests opt in via
     `pytestmark = pytest.mark.usefixtures("mock_setup_entry")` (see
     tests/test_config_flow.py) so every other test file still exercises the
-    real async_setup_entry (BigQuery client, coordinator refresh — covered
-    by test_coordinator.py and test_sensor.py). Without this fixture, HA
-    auto-sets-up a newly created config entry with the real (unmocked)
-    async_setup_entry, which fails against the flow tests' fake credentials
-    and crashes fixture teardown. The stub still sets runtime_data, because
-    the real async_unload_entry runs at hass teardown (after this patch ends)
-    and closes the client the real setup would have stored there."""
+    real async_setup_entry. Without it, HA sets up each entry a flow creates
+    or reloads, which would make flow tests depend on setup. The stub still
+    sets runtime_data, which the real async_unload_entry's platforms expect
+    at hass teardown (after this patch ends)."""
     async def _setup(hass, entry):
         entry.runtime_data = MagicMock()
         return True
@@ -43,3 +42,14 @@ def entity_registry_enabled_by_default():
     with patch("homeassistant.helpers.entity.Entity.entity_registry_enabled_default",
                new_callable=PropertyMock, return_value=True):
         yield
+
+
+@pytest.fixture(autouse=True)
+def fake_geodrops_client():
+    """Never talk to Google: every GeoDropsClient the integration makes is a fake."""
+    FakeGeoDropsClient.created = []
+    with (
+        patch("custom_components.geodrops.GeoDropsClient", FakeGeoDropsClient),
+        patch("custom_components.geodrops.config_flow.GeoDropsClient", FakeGeoDropsClient),
+    ):
+        yield FakeGeoDropsClient

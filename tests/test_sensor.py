@@ -3,7 +3,7 @@ from datetime import timedelta
 from unittest.mock import MagicMock
 from homeassistant.util import dt as dt_util
 from custom_components.geodrops.sensor import build_sensors, SENSOR_SPECS
-from custom_components.geodrops.transform import DeviceReading
+from aiogeodrops import DeviceReading
 from custom_components.geodrops import const
 
 

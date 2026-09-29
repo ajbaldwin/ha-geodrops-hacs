@@ -1,11 +1,11 @@
 from datetime import datetime, timezone
-from unittest.mock import patch, MagicMock
 
+from aiogeodrops import DeviceReading, GeoDropsQueryError
 from custom_components.geodrops import const
-from custom_components.geodrops.bigquery_api import QueryError
 from custom_components.geodrops.diagnostics import async_get_config_entry_diagnostics
-from custom_components.geodrops.transform import DeviceReading
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from tests.common import patch_client
 
 READ_AT = datetime(2026, 9, 29, 6, 0, tzinfo=timezone.utc)
 
@@ -28,9 +28,7 @@ async def _setup(hass):
             {"serial": "BBB222", "device_id": 1002, "name": "Back"}]},
     )
     entry.add_to_hass(hass)
-    with patch("custom_components.geodrops.make_client", return_value=MagicMock()), \
-         patch("custom_components.geodrops.coordinator.fetch_latest",
-               return_value={1001: _reading()}):
+    with patch_client("fetch_latest", return_value={1001: _reading()}):
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
     return entry
@@ -65,8 +63,8 @@ async def test_diagnostics_show_each_probes_last_reading(hass):
 async def test_diagnostics_redact_the_project_from_the_last_error(hass):
     entry = await _setup(hass)
     coordinator = entry.runtime_data
-    with patch("custom_components.geodrops.coordinator.fetch_latest",
-               side_effect=QueryError("404 Not found: Job my-project:US.job_1")):
+    with patch_client("fetch_latest",
+                      side_effect=GeoDropsQueryError("404 Not found: Job my-project:US.job_1")):
         await coordinator.async_refresh()
 
     diag = await async_get_config_entry_diagnostics(hass, entry)

@@ -4,12 +4,13 @@ from __future__ import annotations
 from datetime import timedelta
 import logging
 
+from aiogeodrops import GeoDropsAccessDeniedError, GeoDropsAuthError, GeoDropsError
+
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .bigquery_api import fetch_latest, AccessDeniedError, AuthError, QueryError
 from .transform import classify_staleness, data_age_hours
 from . import const
 
@@ -59,19 +60,17 @@ class GeoDropsCoordinator(DataUpdateCoordinator):
             self._clear_access_denied()
             return {}
         try:
-            data = await self.hass.async_add_executor_job(
-                fetch_latest, self.client, ids, self.lookback_hours
-            )
-        except AuthError as err:
+            data = await self.client.fetch_latest(ids, self.lookback_hours)
+        except GeoDropsAuthError as err:
             raise ConfigEntryAuthFailed(
                 translation_domain=const.DOMAIN, translation_key="auth_failed",
                 translation_placeholders={"error": str(err)}) from err
-        except AccessDeniedError as err:
+        except GeoDropsAccessDeniedError as err:
             self._raise_access_denied(err)
             raise UpdateFailed(
                 translation_domain=const.DOMAIN, translation_key="access_denied",
                 translation_placeholders={"error": str(err)}) from err
-        except QueryError as err:
+        except GeoDropsError as err:
             raise UpdateFailed(
                 translation_domain=const.DOMAIN, translation_key="query_failed",
                 translation_placeholders={"error": str(err)}) from err
