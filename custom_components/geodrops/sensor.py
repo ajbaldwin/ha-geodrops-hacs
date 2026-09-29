@@ -44,9 +44,12 @@ _PCT = dict(device_class=SensorDeviceClass.MOISTURE, unit=PERCENTAGE,
             state_class=SensorStateClass.MEASUREMENT)
 _TEMP = dict(device_class=SensorDeviceClass.TEMPERATURE, unit=UnitOfTemperature.CELSIUS,
              state_class=SensorStateClass.MEASUREMENT)
-# Per-depth reading quality: useful for diagnosing a probe, noise on a dashboard
+# Per-depth reading quality: diagnostic, but enabled by default because other
+# integrations (e.g. irrigation schedulers) read these states to decide
+# whether a probe's moisture reading can be trusted. A disabled entity has
+# no state at all, which they would treat as an untrustworthy probe.
 _QCN = dict(device_class=SensorDeviceClass.ENUM, options=QCN_OPTIONS,
-            entity_category=EntityCategory.DIAGNOSTIC, enabled_default=False)
+            entity_category=EntityCategory.DIAGNOSTIC)
 
 
 def _depth(n):
