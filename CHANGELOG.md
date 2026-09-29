@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.6.0-beta.5 — Quality sensors stay on
+- **Quality sensors stay enabled on new probes.** beta.4 created Quality Depth 1–3 disabled on newly added probes. A disabled sensor has no state at all, not just a hidden one, so irrigation schedulers and other integrations that check these sensors to decide whether a moisture reading can be trusted would have treated the probe as unreliable. They are enabled again and stay under *Diagnostic* on the device page. Only Sync Delay is disabled by default.
+
 ## 0.6.0-beta.4 — Diagnostics, Repairs, and a tidier device page
 - **Technical sensors move to the Diagnostic section.** Battery, Sync Delay, Last Reading and Quality Depth 1–3 now appear under *Diagnostic* on the device page and drop off auto-generated dashboards. They keep their entity ids and history; add them to a dashboard card by hand if you want them there.
 - **New probes start leaner.** Sync Delay and Quality Depth 1–3 are disabled by default on probes you add from now on. Existing probes keep these sensors as they are. Enable them from the device page if you need them.
