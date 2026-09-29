@@ -2,7 +2,7 @@ import json
 import re
 from pathlib import Path
 
-from custom_components.geodrops.sensor import SENSOR_SPECS
+from custom_components.geodrops.sensor import SENSOR_DESCRIPTIONS
 
 ROOT = Path(__file__).parent.parent / "custom_components" / "geodrops"
 # hassfest's translation_key_validator: translation keys, state keys and
@@ -19,7 +19,7 @@ def _sensor_strings():
 
 
 def _enum_specs():
-    return [s for s in SENSOR_SPECS if s.options]
+    return [s for s in SENSOR_DESCRIPTIONS if s.options]
 
 
 def test_en_json_matches_strings_json():
@@ -29,25 +29,25 @@ def test_en_json_matches_strings_json():
 
 def test_every_sensor_has_a_translated_name_with_its_placeholders():
     strings = _sensor_strings()
-    for spec in SENSOR_SPECS:
+    for spec in SENSOR_DESCRIPTIONS:
         name = strings[spec.translation_key]["name"]
-        assert set(re.findall(r"{(\w+)}", name)) == set(spec.placeholders or {}), spec.suffix
+        assert set(re.findall(r"{(\w+)}", name)) == set(spec.translation_placeholders or {}), spec.key
 
 
 def test_no_unused_sensor_translations():
-    assert set(_sensor_strings()) == {s.translation_key for s in SENSOR_SPECS}
+    assert set(_sensor_strings()) == {s.translation_key for s in SENSOR_DESCRIPTIONS}
 
 
 def test_every_enum_state_has_a_label_and_an_icon():
     strings, icons = _sensor_strings(), _load("icons.json")["entity"]["sensor"]
     for spec in _enum_specs():
-        assert set(strings[spec.translation_key]["state"]) == set(spec.options), spec.suffix
-        assert set(icons[spec.translation_key]["state"]) == set(spec.options), spec.suffix
+        assert set(strings[spec.translation_key]["state"]) == set(spec.options or []), spec.key
+        assert set(icons[spec.translation_key]["state"]) == set(spec.options or []), spec.key
 
 
 def test_icons_only_reference_real_sensors():
     icons = _load("icons.json")["entity"]["sensor"]
-    assert set(icons) <= {s.translation_key for s in SENSOR_SPECS}
+    assert set(icons) <= {s.translation_key for s in SENSOR_DESCRIPTIONS}
 
 
 def test_keys_pass_hassfest_validation():

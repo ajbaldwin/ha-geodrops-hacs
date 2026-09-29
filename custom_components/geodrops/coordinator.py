@@ -1,11 +1,19 @@
 """Polling coordinator for GeoDrops BigQuery data."""
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
 
-from aiogeodrops import GeoDropsAccessDeniedError, GeoDropsAuthError, GeoDropsError
+from aiogeodrops import (
+    DeviceReading,
+    GeoDropsAccessDeniedError,
+    GeoDropsAuthError,
+    GeoDropsClient,
+    GeoDropsError,
+)
 
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -13,47 +21,60 @@ from homeassistant.util import dt as dt_util
 
 from .transform import classify_staleness, data_age_hours
 from . import const
+from .const import DeviceConfig
 
 _LOGGER = logging.getLogger(__name__)
 
 TROUBLESHOOTING_URL = "https://github.com/ajbaldwin/ha-geodrops-hacs#troubleshooting"
 
+type GeoDropsConfigEntry = ConfigEntry[GeoDropsCoordinator]
 
-def access_denied_issue_id(entry_id):
+
+def access_denied_issue_id(entry_id: str) -> str:
     return f"access_denied_{entry_id}"
 
 
-class GeoDropsCoordinator(DataUpdateCoordinator):
-    def __init__(self, hass, entry, client):
-        self.entry = entry
+class GeoDropsCoordinator(DataUpdateCoordinator[dict[int, DeviceReading]]):
+    config_entry: GeoDropsConfigEntry
+
+    def __init__(
+        self, hass: HomeAssistant, entry: GeoDropsConfigEntry, client: GeoDropsClient
+    ) -> None:
         self.client = client
         # When each device's row last came back from a poll. A poll can succeed
         # yet return no row for a device (GeoDrops' table is briefly empty twice
         # a day), so availability is judged per device, not per poll.
-        self._seen = {}
+        self._seen: dict[int, datetime] = {}
         # Probes already logged as stale, so "warn after" logs once per episode
-        self._stale = set()
-        interval = entry.options.get(const.CONF_SCAN_INTERVAL, const.DEFAULT_SCAN_INTERVAL)
+        self._stale: set[int] = set()
+        interval: int = entry.options.get(const.CONF_SCAN_INTERVAL, const.DEFAULT_SCAN_INTERVAL)
         super().__init__(
             hass, _LOGGER, name="GeoDrops", config_entry=entry,
             update_interval=timedelta(minutes=interval),
         )
 
     @property
-    def device_ids(self):
-        return [d[const.DEV_ID] for d in self.entry.options.get(const.CONF_DEVICES, [])]
+    def devices(self) -> list[DeviceConfig]:
+        devices: list[DeviceConfig] = self.config_entry.options.get(const.CONF_DEVICES, [])
+        return devices
 
     @property
-    def lookback_hours(self):
-        return self.entry.options.get(const.CONF_LOOKBACK_HOURS, const.DEFAULT_LOOKBACK_HOURS)
+    def device_ids(self) -> list[int]:
+        return [d[const.DEV_ID] for d in self.devices]
 
-    def reading(self, device_id):
+    @property
+    def lookback_hours(self) -> int:
+        hours: int = self.config_entry.options.get(
+            const.CONF_LOOKBACK_HOURS, const.DEFAULT_LOOKBACK_HOURS)
+        return hours
+
+    def reading(self, device_id: int) -> DeviceReading | None:
         return (self.data or {}).get(device_id)
 
-    def reading_time(self, device_id):
+    def reading_time(self, device_id: int) -> datetime | None:
         return self._seen.get(device_id)
 
-    async def _async_update_data(self):
+    async def _async_update_data(self) -> dict[int, DeviceReading]:
         ids = self.device_ids
         if not ids:
             self._seen = {}
@@ -81,7 +102,7 @@ class GeoDropsCoordinator(DataUpdateCoordinator):
         # A device missing from this poll keeps its last reading; the sensors'
         # expire window decides when that is too old to show.
         previous = self.data or {}
-        merged = {}
+        merged: dict[int, DeviceReading] = {}
         for device_id in ids:
             reading = data.get(device_id, previous.get(device_id))
             if reading is not None:
@@ -90,26 +111,27 @@ class GeoDropsCoordinator(DataUpdateCoordinator):
         self._log_staleness(merged, now)
         return merged
 
-    def _raise_access_denied(self, err):
+    def _raise_access_denied(self, err: GeoDropsAccessDeniedError) -> None:
         """Only a change in GCP fixes a 403, so tell the user in Repairs."""
         ir.async_create_issue(
-            self.hass, const.DOMAIN, access_denied_issue_id(self.entry.entry_id),
+            self.hass, const.DOMAIN, access_denied_issue_id(self.config_entry.entry_id),
             is_fixable=False, severity=ir.IssueSeverity.ERROR,
             translation_key="access_denied",
             translation_placeholders={
-                "project_id": self.entry.data[const.CONF_PROJECT_ID], "error": str(err)},
+                "project_id": self.config_entry.data[const.CONF_PROJECT_ID], "error": str(err)},
             learn_more_url=TROUBLESHOOTING_URL,
         )
 
-    def _clear_access_denied(self):
-        ir.async_delete_issue(self.hass, const.DOMAIN, access_denied_issue_id(self.entry.entry_id))
+    def _clear_access_denied(self) -> None:
+        ir.async_delete_issue(
+            self.hass, const.DOMAIN, access_denied_issue_id(self.config_entry.entry_id))
 
-    def _log_staleness(self, readings, now):
+    def _log_staleness(self, readings: dict[int, DeviceReading], now: datetime) -> None:
         """Warn once when a probe's data passes "warn after"; note when it recovers."""
-        options = self.entry.options
-        warn = options.get(const.CONF_WARN_HOURS, const.DEFAULT_WARN_HOURS)
-        skip = options.get(const.CONF_SKIP_HOURS, const.DEFAULT_SKIP_HOURS)
-        for device in options.get(const.CONF_DEVICES, []):
+        options = self.config_entry.options
+        warn: int = options.get(const.CONF_WARN_HOURS, const.DEFAULT_WARN_HOURS)
+        skip: int = options.get(const.CONF_SKIP_HOURS, const.DEFAULT_SKIP_HOURS)
+        for device in self.devices:
             device_id = device[const.DEV_ID]
             reading = readings.get(device_id)
             age = None if reading is None else data_age_hours(reading, now)

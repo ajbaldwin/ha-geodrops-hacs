@@ -8,4 +8,5 @@ jobs:
       - uses: actions/setup-python@v6
         with: { python-version: "3.13" }
       - run: pip install -r requirements-dev.txt aiogeodrops==0.1.1
+      - run: mypy
       - run: pytest -q --cov=custom_components/geodrops --cov-report=term-missing
