@@ -162,3 +162,11 @@ def test_depth_sensors_share_a_translation_with_a_depth_placeholder():
     assert sensor.translation_key == "qcn_depth"
     assert sensor.translation_placeholders == {"depth": "2"}
     assert sensor.unique_id == "AAA111_qcn_d2"   # unchanged, so entities carry over
+
+
+def test_sync_delay_is_a_duration_in_hours():
+    from homeassistant.components.sensor import SensorDeviceClass
+    sensor = _sensor(_coord(_reading()), "sync_delay")
+    assert sensor.device_class == SensorDeviceClass.DURATION
+    assert sensor.native_unit_of_measurement == "h"
+    assert sensor.native_value == 2.0

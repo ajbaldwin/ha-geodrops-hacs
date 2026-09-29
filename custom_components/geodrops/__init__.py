@@ -5,10 +5,12 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import issue_registry as ir
 
 from . import const
 from .bigquery_api import make_client, CredentialsError
-from .coordinator import GeoDropsCoordinator
+from .coordinator import GeoDropsCoordinator, access_denied_issue_id
 
 PLATFORMS = [Platform.SENSOR]
 
@@ -24,7 +26,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: GeoDropsConfigEntry) -> 
         )
     except CredentialsError as err:
         # the stored key can't even be parsed; retrying won't fix it
-        raise ConfigEntryAuthFailed(str(err)) from err
+        raise ConfigEntryAuthFailed(
+            translation_domain=const.DOMAIN, translation_key="invalid_credentials",
+            translation_placeholders={"error": str(err)}) from err
 
     coordinator = GeoDropsCoordinator(hass, entry, client)
     try:
@@ -47,3 +51,25 @@ async def async_unload_entry(hass: HomeAssistant, entry: GeoDropsConfigEntry) ->
     if unloaded:
         await hass.async_add_executor_job(entry.runtime_data.client.close)
     return unloaded
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: GeoDropsConfigEntry) -> None:
+    ir.async_delete_issue(hass, const.DOMAIN, access_denied_issue_id(entry.entry_id))
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, entry: GeoDropsConfigEntry, device_entry: dr.DeviceEntry
+) -> bool:
+    """Let the user delete a probe from its device page.
+
+    Probes are only ever added by the user, so there is no way to tell a dead
+    probe from a quiet one; removal is theirs to decide. Dropping it from the
+    options keeps it from coming back on the next reload.
+    """
+    serials = {ident for domain, ident in device_entry.identifiers if domain == const.DOMAIN}
+    devices = entry.options.get(const.CONF_DEVICES, [])
+    remaining = [d for d in devices if d[const.DEV_SERIAL] not in serials]
+    if len(remaining) != len(devices):
+        hass.config_entries.async_update_entry(
+            entry, options={**entry.options, const.CONF_DEVICES: remaining})
+    return True

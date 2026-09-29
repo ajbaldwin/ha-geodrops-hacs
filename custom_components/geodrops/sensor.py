@@ -8,6 +8,7 @@ from typing import Callable, Optional
 from homeassistant.components.sensor import (
     SensorDeviceClass, SensorEntity, SensorStateClass,
 )
+from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTemperature, UnitOfTime
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -35,11 +36,17 @@ class SensorSpec:
     options: Optional[list] = None
     placeholders: Optional[dict] = None   # fills {depth} etc. in the translated name
     moisture_gated: bool = False   # None when device is all-training
+    entity_category: Optional[EntityCategory] = None
+    enabled_default: bool = True   # only applies when a probe is first added
 
 
-_PCT = dict(device_class=SensorDeviceClass.MOISTURE, unit="%", state_class=SensorStateClass.MEASUREMENT)
-_TEMP = dict(device_class=SensorDeviceClass.TEMPERATURE, unit="°C", state_class=SensorStateClass.MEASUREMENT)
-_QCN = dict(device_class=SensorDeviceClass.ENUM, options=QCN_OPTIONS)
+_PCT = dict(device_class=SensorDeviceClass.MOISTURE, unit=PERCENTAGE,
+            state_class=SensorStateClass.MEASUREMENT)
+_TEMP = dict(device_class=SensorDeviceClass.TEMPERATURE, unit=UnitOfTemperature.CELSIUS,
+             state_class=SensorStateClass.MEASUREMENT)
+# Per-depth reading quality: useful for diagnosing a probe, noise on a dashboard
+_QCN = dict(device_class=SensorDeviceClass.ENUM, options=QCN_OPTIONS,
+            entity_category=EntityCategory.DIAGNOSTIC, enabled_default=False)
 
 
 def _depth(n):
@@ -63,17 +70,21 @@ SENSOR_SPECS = [
     SensorSpec("qcn_d3", "qcn_depth", lambda r: qcn_to_state(r.qcn_d3), placeholders=_depth(3), **_QCN),
     SensorSpec("battery", "battery",
                lambda r: None if r.battery_pct is None else int(round(r.battery_pct)),
-               device_class=SensorDeviceClass.BATTERY, unit="%", state_class=SensorStateClass.MEASUREMENT),
-    SensorSpec("sync_delay", "sync_delay", lambda r: r.sync_delay_hours, unit="h",
-               state_class=SensorStateClass.MEASUREMENT),
+               device_class=SensorDeviceClass.BATTERY, unit=PERCENTAGE,
+               state_class=SensorStateClass.MEASUREMENT, entity_category=EntityCategory.DIAGNOSTIC),
+    SensorSpec("sync_delay", "sync_delay", lambda r: r.sync_delay_hours,
+               device_class=SensorDeviceClass.DURATION, unit=UnitOfTime.HOURS,
+               state_class=SensorStateClass.MEASUREMENT, entity_category=EntityCategory.DIAGNOSTIC,
+               enabled_default=False),
     SensorSpec("temp_surface", "surface_temperature", lambda r: r.temp_surface, **_TEMP),
     SensorSpec("temp_d1", "temperature_depth", lambda r: r.temp_d1, placeholders=_depth(1), **_TEMP),
     SensorSpec("temp_d2", "temperature_depth", lambda r: r.temp_d2, placeholders=_depth(2), **_TEMP),
     SensorSpec("temp_d3", "temperature_depth", lambda r: r.temp_d3, placeholders=_depth(3), **_TEMP),
-    SensorSpec("sun_7d", "sun_7d", lambda r: r.sun_7d, unit="h",
+    # hours of sun per day: a rate, so not a duration device class
+    SensorSpec("sun_7d", "sun_7d", lambda r: r.sun_7d, unit=UnitOfTime.HOURS,
                state_class=SensorStateClass.MEASUREMENT),
     SensorSpec("last_reading", "last_reading", lambda r: r.read_at,
-               device_class=SensorDeviceClass.TIMESTAMP),
+               device_class=SensorDeviceClass.TIMESTAMP, entity_category=EntityCategory.DIAGNOSTIC),
 ]
 
 
@@ -95,6 +106,8 @@ class GeoDropsSensor(CoordinatorEntity, SensorEntity):
         self._attr_state_class = spec.state_class
         if spec.options:
             self._attr_options = spec.options
+        self._attr_entity_category = spec.entity_category
+        self._attr_entity_registry_enabled_default = spec.enabled_default
         device_info = DeviceInfo(
             identifiers={(const.DOMAIN, serial)},
             name=device[const.DEV_NAME],

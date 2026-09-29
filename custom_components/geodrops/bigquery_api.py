@@ -39,6 +39,19 @@ class AuthError(QueryError):
     """
 
 
+class AccessDeniedError(QueryError):
+    """Google refused the query (403): a missing role, or the BigQuery API not
+    enabled on the project.
+
+    The key is fine, so this is not a reauth, but only a change in GCP fixes
+    it: callers surface it as a repair issue and keep retrying.
+    """
+
+
+# 403s that clear on their own (per-second limits, daily quota reset)
+_TRANSIENT_403_REASONS = {"rateLimitExceeded", "quotaExceeded"}
+
+
 def _is_auth_error(err: BaseException) -> bool:
     try:
         from google.api_core.exceptions import Unauthorized
@@ -56,6 +69,17 @@ def _is_auth_error(err: BaseException) -> bool:
     return False
 
 
+def _is_access_denied(err: BaseException) -> bool:
+    from google.api_core.exceptions import Forbidden
+
+    while err is not None:
+        if isinstance(err, Forbidden):
+            reasons = {e.get("reason") for e in err.errors or [] if isinstance(e, dict)}
+            return not reasons & _TRANSIENT_403_REASONS
+        err = err.__cause__
+    return False
+
+
 def _run(client, sql: str, job_config=None):
     from google.cloud.bigquery.retry import DEFAULT_JOB_RETRY, DEFAULT_RETRY
 
@@ -69,6 +93,8 @@ def _run(client, sql: str, job_config=None):
     except Exception as err:  # google.api_core / google.auth exceptions
         if _is_auth_error(err):
             raise AuthError(str(err)) from err
+        if _is_access_denied(err):
+            raise AccessDeniedError(str(err)) from err
         raise QueryError(str(err)) from err
 
 

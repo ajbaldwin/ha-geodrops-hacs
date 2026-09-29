@@ -168,3 +168,29 @@ def test_make_client_builds_a_client_for_a_well_formed_key():
         assert client._credentials.service_account_email == "sa@p.iam.gserviceaccount.com"
     finally:
         client.close()
+
+
+def test_forbidden_is_access_denied():
+    # missing role or BigQuery API not enabled: fixed in GCP, so a repair issue
+    from google.api_core.exceptions import Forbidden
+    exc = Forbidden("Access Denied", errors=[{"reason": "accessDenied"}])
+    with pytest.raises(bq.AccessDeniedError):
+        bq.fetch_latest(_raising_client(exc), [1001], 12)
+
+
+def test_access_denied_found_through_exception_cause():
+    from google.api_core.exceptions import Forbidden
+    wrapper = RuntimeError("job failed")
+    wrapper.__cause__ = Forbidden("Access Denied")
+    with pytest.raises(bq.AccessDeniedError):
+        bq.validate_access(_raising_client(wrapper))
+
+
+@pytest.mark.parametrize("reason", ["rateLimitExceeded", "quotaExceeded"])
+def test_rate_and_quota_403s_are_not_access_denied(reason):
+    # BigQuery reports these as 403 too, but they clear on their own
+    from google.api_core.exceptions import Forbidden
+    exc = Forbidden("Exceeded rate limits", errors=[{"reason": reason}])
+    with pytest.raises(bq.QueryError) as info:
+        bq.fetch_latest(_raising_client(exc), [1001], 12)
+    assert not isinstance(info.value, bq.AccessDeniedError)
