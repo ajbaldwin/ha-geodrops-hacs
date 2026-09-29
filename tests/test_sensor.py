@@ -2,7 +2,7 @@ import pytest
 from datetime import timedelta
 from unittest.mock import MagicMock
 from homeassistant.util import dt as dt_util
-from custom_components.geodrops.sensor import build_sensors, SENSOR_SPECS
+from custom_components.geodrops.sensor import build_sensors, SENSOR_DESCRIPTIONS
 from aiogeodrops import DeviceReading
 from custom_components.geodrops import const
 
@@ -18,7 +18,7 @@ def _reading(all_training=False):
 def _coord(reading, skip_hours=12, seen=None):
     c = MagicMock()
     c.reading.return_value = reading
-    c.entry.options = {const.CONF_SKIP_HOURS: skip_hours}
+    c.config_entry.options = {const.CONF_SKIP_HOURS: skip_hours}
     # default: the device's row just arrived, so tests that don't care about
     # FIX 8's expire_after_minutes wiring stay within the window
     c.reading_time.return_value = seen if seen is not None else dt_util.utcnow()
@@ -26,13 +26,13 @@ def _coord(reading, skip_hours=12, seen=None):
 
 
 def test_16_sensors_per_device():
-    assert len(SENSOR_SPECS) == 16
+    assert len(SENSOR_DESCRIPTIONS) == 16
 
 
 def test_moisture_value_and_state():
     coord = _coord(_reading())
     sensors = build_sensors(coord, {"serial": "AAA111", "device_id": 1001, "name": "Front"})
-    by_suffix = {s._suffix: s for s in sensors}
+    by_suffix = {s.entity_description.key: s for s in sensors}
     assert by_suffix["moisture"].native_value == 42.5
     assert by_suffix["moisture_state"].native_value == "moist_plus"
     assert by_suffix["battery"].native_value == 88   # rounded int
@@ -42,7 +42,7 @@ def test_moisture_value_and_state():
 def test_moisture_unknown_when_all_training():
     coord = _coord(_reading(all_training=True))
     sensors = build_sensors(coord, {"serial": "AAA111", "device_id": 1001, "name": "Front"})
-    by_suffix = {s._suffix: s for s in sensors}
+    by_suffix = {s.entity_description.key: s for s in sensors}
     assert by_suffix["moisture"].native_value is None       # omitted when all-training
     assert by_suffix["battery"].native_value == 88          # telemetry still reported
 
@@ -101,7 +101,7 @@ DEVICE = {"serial": "AAA111", "device_id": 1001, "name": "Front"}
 
 
 def _sensor(coord, suffix):
-    return {s._suffix: s for s in build_sensors(coord, DEVICE)}[suffix]
+    return {s.entity_description.key: s for s in build_sensors(coord, DEVICE)}[suffix]
 
 
 def _with(**changes):

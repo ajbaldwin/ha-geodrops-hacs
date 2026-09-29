@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from aiogeodrops import GeoDropsClient, GeoDropsCredentialsError
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
@@ -12,11 +11,10 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from . import const
-from .coordinator import GeoDropsCoordinator, access_denied_issue_id
+from .const import DeviceConfig
+from .coordinator import GeoDropsConfigEntry, GeoDropsCoordinator, access_denied_issue_id
 
 PLATFORMS = [Platform.SENSOR]
-
-type GeoDropsConfigEntry = ConfigEntry[GeoDropsCoordinator]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: GeoDropsConfigEntry) -> bool:
@@ -61,7 +59,7 @@ async def async_remove_config_entry_device(
     options keeps it from coming back on the next reload.
     """
     serials = {ident for domain, ident in device_entry.identifiers if domain == const.DOMAIN}
-    devices = entry.options.get(const.CONF_DEVICES, [])
+    devices: list[DeviceConfig] = entry.options.get(const.CONF_DEVICES, [])
     remaining = [d for d in devices if d[const.DEV_SERIAL] not in serials]
     if len(remaining) != len(devices):
         hass.config_entries.async_update_entry(
