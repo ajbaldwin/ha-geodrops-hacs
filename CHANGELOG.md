@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0-beta.4 — Diagnostics, Repairs, and a tidier device page
+- **Technical sensors move to the Diagnostic section.** Battery, Sync Delay, Last Reading and Quality Depth 1–3 now appear under *Diagnostic* on the device page and drop off auto-generated dashboards. They keep their entity ids and history; add them to a dashboard card by hand if you want them there.
+- **New probes start leaner.** Sync Delay and Quality Depth 1–3 are disabled by default on probes you add from now on. Existing probes keep these sensors as they are. Enable them from the device page if you need them.
+- **GCP permission problems show in Repairs.** A missing BigQuery role or a disabled BigQuery API now raises an issue under Settings → Repairs, linked to the README's troubleshooting section. It clears on its own after the next successful poll.
+- **Download diagnostics.** The integration's ⋮ menu → Download diagnostics saves settings, poll status, and each probe's last reading for bug reports. The service-account key and project id are redacted.
+- **Delete a probe from its device page.** Deleting the device also removes the probe from the integration, so it isn't recreated on the next poll.
+- **Clearer forms and errors.** Every setup, add-probe, re-authenticate and reconfigure field has help text, and error messages are translated.
+- **Docs.** The README gains an Advanced Options reference, automation examples, known limitations, troubleshooting, and removal instructions.
+
 ## 0.6.0-beta.3 — Translated states, a Last Reading sensor, safer settings
 - **⚠️ Update automations that check Moisture State or Quality.** These sensors now report stable keys (`moist_plus`, `good`, `training`, …) that the UI still shows as "Moist+", "Good", "Training". Automations and templates comparing against the old text stop matching; the README's "States for automations" table lists every state. An unclassified value is now Home Assistant's own `unknown`.
 - **New Last Reading sensor** shows when each probe last took a reading.
