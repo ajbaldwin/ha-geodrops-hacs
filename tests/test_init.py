@@ -183,8 +183,10 @@ async def test_diagnostic_and_disabled_sensors(hass):
     assert diagnostic == {"battery", "sync_delay", "last_reading", "qcn_d1", "qcn_d2", "qcn_d3"}
     disabled = {k for k, e in entries.items()
                 if e.disabled_by is er.RegistryEntryDisabler.INTEGRATION}
-    assert disabled == {"sync_delay", "qcn_d1", "qcn_d2", "qcn_d3"}
-    assert hass.states.get("sensor.front_quality_depth_1") is None
+    assert disabled == {"sync_delay"}
+    assert hass.states.get("sensor.front_sync_delay") is None
+    # other integrations read the quality states, so they must exist
+    assert hass.states.get("sensor.front_quality_depth_1").state == "good"
     assert hass.states.get("sensor.front_dominant_moisture").state == "42.0"
 
 

@@ -183,9 +183,10 @@ warning is written to the Home Assistant log (once, until it reports again).
 
 Battery, Sync Delay, Last Reading and Quality Depth 1–3 are **diagnostic**
 sensors: they are listed under *Diagnostic* on the device page and left off
-auto-generated dashboards. Sync Delay and Quality Depth 1–3 are also
-**disabled by default** on newly added probes; enable them from the device
-page if you want them. Probes added before this change keep all 16 enabled.
+auto-generated dashboards. Sync Delay is also **disabled by default** on
+newly added probes; enable it from the device page if you want it. The
+Quality sensors stay enabled, because automations and other integrations use
+them to decide whether a moisture reading can be trusted.
 
 ### States for automations
 
