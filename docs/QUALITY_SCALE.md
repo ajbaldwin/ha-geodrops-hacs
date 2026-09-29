@@ -19,13 +19,15 @@ Assessed against v0.6.0-beta.3 (commit `8fe1b99`), 2026-09-29.
 | Bronze | 20 | 15 | 5 | 0 | None |
 | Silver | 10 | 9 | 1 | 0 | None |
 | Gold | 21 | 18 | 3 | 0 | None |
-| Platinum | 3 | 2 | 0 | 1 | Strict typing of the integration |
+| Platinum | 3 | 3 | 0 | 0 | None |
 
 The codebase is in good shape for its tier: runtime data, coordinator,
 reauth, reconfigure, translated entity names, icon translations and 100 % test
-coverage are in place. Bronze, Silver and Gold are complete. For Platinum, the
-async `aiogeodrops` library replaces the BigQuery client; strict typing of the
-integration remains.
+coverage are in place. Bronze, Silver, Gold and Platinum are complete: the
+async `aiogeodrops` library replaces the BigQuery client, and the integration
+passes mypy with Home Assistant core's strict settings. The
+[development-guidelines](#development-guidelines-conformance) cleanup is the
+remaining work.
 
 ---
 
@@ -193,7 +195,7 @@ Worth doing if the options flow grows; not required for Gold.
 | --- | --- | --- |
 | async-dependency | Done | [`aiogeodrops`](https://github.com/ajbaldwin/aiogeodrops): async, aiohttp + PyJWT only. |
 | inject-websession | Done | The client uses `async_get_clientsession(hass)`. |
-| strict-typing | **Partial** | `aiogeodrops` ships `py.typed` and passes `mypy --strict`; the integration itself is not yet annotated and has no mypy CI job. |
+| strict-typing | Done | `aiogeodrops` ships `py.typed` and passes `mypy --strict`. The integration is fully annotated and CI runs mypy with HA core's strict settings (`mypy.ini`). |
 
 All three rules point at the same refactor: replace
 `google-cloud-bigquery` with a small async library.
@@ -249,7 +251,7 @@ and the three Platinum rules are judged on that library.
 - Stop test-patching module functions; mock `GeoDropsClient` with a
   `mock_geodrops_client` fixture in `conftest.py` (core pattern).
 
-### Strict typing (in this repo, alongside the library)
+### Strict typing (done)
 
 - Type every function. Use `DataUpdateCoordinator[dict[int, DeviceReading]]`,
   `GeoDropsConfigEntry` in all signatures, `ConfigFlowResult` for flow steps,
@@ -257,9 +259,11 @@ and the three Platinum rules are judged on that library.
   `TypedDict` for the per-probe option dict.
 - Use `self.config_entry` in the coordinator and drop the duplicate
   `self.entry`.
-- Add a `mypy` CI job with HA's strict settings (`disallow_untyped_defs`,
-  `disallow_any_generics`, `warn_return_any`, `no_implicit_optional`, …)
+- Add a `mypy` CI job with HA core's strict settings (`mypy.ini`:
+  `disallow_untyped_defs`, `warn_return_any`, `no_implicit_optional`, …)
   over `custom_components/geodrops`.
+- Sensors use a `SensorEntityDescription` subclass instead of a custom spec
+  dataclass, so their metadata is typed by Home Assistant itself.
 
 ---
 
@@ -305,7 +309,8 @@ Also from the guidelines:
 | 0.6.x | Bronze + Silver fixes: field descriptions, recovery tests, removal docs, `PARALLEL_UPDATES`, options table | Done |
 | 0.7.0 | Gold code: diagnostics, entity category/class/disabled-by-default, exception translations, repair issue, device-page removal | Done |
 | 0.7.x | Gold docs: use cases, examples, limitations, supported devices, troubleshooting | Done |
-| 0.8.0 | Ruff/docstring cleanup and full type annotations + mypy CI | 1 day |
+| 0.8.0 | Full type annotations + mypy CI | Done |
+| 0.8.x | Ruff/docstring cleanup | Half a day |
 | 1.0.0 | `aiogeodrops` library, then switch the integration to it | Done (`aiogeodrops` 0.1.0 on PyPI) |
 
 The 1.0.0 step is the only risky one: it replaces the whole data path. Ship
