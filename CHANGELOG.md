@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0-beta.6 — A lighter, native BigQuery connection
+- **Smaller install, and no more grpcio warning from GeoDrops.** GeoDrops now reads BigQuery through its own small library, [aiogeodrops](https://github.com/ajbaldwin/aiogeodrops), instead of Google's BigQuery SDK. That removes grpcio, protobuf and the rest of the SDK from what GeoDrops installs, so the "grpcio < 1.83.0 does not support Post-Quantum Cryptography" warning no longer comes from GeoDrops. Polls also run on Home Assistant's own event loop and HTTP connection instead of a worker thread.
+- **Nothing to change on your side.** Sensors, entity IDs, states, options and your stored key are all unchanged. Before this release, readings from the new connection were compared with beta.5 on a live install, and every value matched.
+- **Setup survives unexpected errors.** An unexpected error while checking a key or looking up a probe used to end the setup form. Now the form stays open, says to check the log (where the details are), and you can try again.
+- **Diagnostics hide more.** Downloaded diagnostics now also redact the service account's email and the project the key was created in, not just the project queries run in.
+- **Keeping the key safe.** The README said Home Assistant stores the key encrypted. It doesn't: config entries are kept in plain text in `/config/.storage` and included in backups. The README now says so, and suggests deleting the downloaded key file and setting a daily BigQuery quota to cap the cost if a key ever leaks.
+- **Log wording.** The "has not reported for … hours" and "is reporting again" log messages start with "Probe" instead of "GeoDrops probe"; the log line already names the integration.
+
 ## 0.6.0-beta.5 — Quality sensors stay on
 - **Quality sensors stay enabled on new probes.** beta.4 created Quality Depth 1–3 disabled on newly added probes. A disabled sensor has no state at all, not just a hidden one, so irrigation schedulers and other integrations that check these sensors to decide whether a moisture reading can be trusted would have treated the probe as unreliable. They are enabled again and stay under *Diagnostic* on the device page. Only Sync Delay is disabled by default.
 
