@@ -19,12 +19,13 @@ Assessed against v0.6.0-beta.3 (commit `8fe1b99`), 2026-09-29.
 | Bronze | 20 | 15 | 5 | 0 | None |
 | Silver | 10 | 9 | 1 | 0 | None |
 | Gold | 21 | 18 | 3 | 0 | None |
-| Platinum | 3 | 0 | 0 | 3 | Replace `google-cloud-bigquery` with an async, typed library |
+| Platinum | 3 | 2 | 0 | 1 | Strict typing of the integration |
 
 The codebase is in good shape for its tier: runtime data, coordinator,
-reauth, reconfigure, translated entity names, icon translations and 99 % test
-coverage are already in place. Bronze and Silver are complete. Gold is complete. Platinum is the one large
-refactor: the BigQuery client.
+reauth, reconfigure, translated entity names, icon translations and 100 % test
+coverage are in place. Bronze, Silver and Gold are complete. For Platinum, the
+async `aiogeodrops` library replaces the BigQuery client; strict typing of the
+integration remains.
 
 ---
 
@@ -38,7 +39,7 @@ refactor: the BigQuery client.
 | common-modules | Done | Coordinator in `coordinator.py`. Add `entity.py` if a second platform appears. |
 | config-flow | Done | Every flow field has a `data_description`. |
 | config-flow-test-coverage | Done | 100 % covered; every error test resubmits valid input and finishes the flow. |
-| dependency-transparency | Done | `google-cloud-bigquery` is Apache-2.0, built and published from public CI. |
+| dependency-transparency | Done | [`aiogeodrops`](https://github.com/ajbaldwin/aiogeodrops) is MIT, published to PyPI from public CI with trusted publishing. |
 | docs-actions | Exempt | No actions. |
 | docs-conditions | Exempt | No conditions. |
 | docs-triggers | Exempt | No triggers. |
@@ -87,7 +88,7 @@ refactor: the BigQuery client.
 | log-when-unavailable | Done | Coordinator logs failures once; staleness logs once per episode. |
 | parallel-updates | Done | `PARALLEL_UPDATES = 0` in `sensor.py`. |
 | reauthentication-flow | Done | `reauth_confirm`. |
-| test-coverage | Done | 99 % (CI). Only `bigquery_api.py:46-47`, the `ImportError` branch, is missed. |
+| test-coverage | Done | 100 % (CI). |
 
 ### Changes (done)
 
@@ -190,9 +191,9 @@ Worth doing if the options flow grows; not required for Gold.
 
 | Rule | Status | Notes |
 | --- | --- | --- |
-| async-dependency | **To do** | `google-cloud-bigquery` is synchronous (`requests`); every call runs in the executor. |
-| inject-websession | **To do** | The client owns its own HTTP session. |
-| strict-typing | **To do** | 93 missing annotations (ruff `ANN`); no mypy in CI. |
+| async-dependency | Done | [`aiogeodrops`](https://github.com/ajbaldwin/aiogeodrops): async, aiohttp + PyJWT only. |
+| inject-websession | Done | The client uses `async_get_clientsession(hass)`. |
+| strict-typing | **Partial** | `aiogeodrops` ships `py.typed` and passes `mypy --strict`; the integration itself is not yet annotated and has no mypy CI job. |
 
 All three rules point at the same refactor: replace
 `google-cloud-bigquery` with a small async library.
@@ -305,7 +306,7 @@ Also from the guidelines:
 | 0.7.0 | Gold code: diagnostics, entity category/class/disabled-by-default, exception translations, repair issue, device-page removal | Done |
 | 0.7.x | Gold docs: use cases, examples, limitations, supported devices, troubleshooting | Done |
 | 0.8.0 | Ruff/docstring cleanup and full type annotations + mypy CI | 1 day |
-| 1.0.0 | `aiogeodrops` library, then switch the integration to it | 3–5 days |
+| 1.0.0 | `aiogeodrops` library, then switch the integration to it | Done (`aiogeodrops` 0.1.0 on PyPI) |
 
 The 1.0.0 step is the only risky one: it replaces the whole data path. Ship
 it as a beta and compare readings against 0.8 on a live install before

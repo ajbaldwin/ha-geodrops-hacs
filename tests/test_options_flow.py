@@ -1,11 +1,13 @@
 import pytest
+from aiogeodrops import (
+    DeviceReading, GeoDropsAuthError, GeoDropsConnectionError, GeoDropsCredentialsError,
+)
 from homeassistant.data_entry_flow import FlowResultType, InvalidData
-from unittest.mock import patch, MagicMock
 from homeassistant.helpers import device_registry as dr
 from custom_components.geodrops import const
-from custom_components.geodrops.bigquery_api import AuthError, CredentialsError, QueryError
-from custom_components.geodrops.transform import DeviceReading
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from tests.common import FakeGeoDropsClient, patch_client, patch_client_init
 
 
 def _reading(device_id=1002):
@@ -43,8 +45,7 @@ async def test_add_second_device(hass):
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"next_step_id": "add_device"})
-    with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()), \
-         patch("custom_components.geodrops.config_flow.lookup_serial", return_value=_reading()):
+    with patch_client("lookup_serial", return_value=_reading()):
         result = await hass.config_entries.options.async_configure(
             result["flow_id"], {const.DEV_SERIAL: "aaa222", const.DEV_NAME: "Back"})
     serials = [d[const.DEV_SERIAL] for d in entry.options[const.CONF_DEVICES]]
@@ -111,8 +112,7 @@ async def _assert_settings_recover(hass, entry, result):
 
 async def _assert_add_device_recovers(hass, entry, result):
     """After an add-probe error, a known serial is still added."""
-    with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()), \
-         patch("custom_components.geodrops.config_flow.lookup_serial", return_value=_reading()):
+    with patch_client("lookup_serial", return_value=_reading()):
         result = await hass.config_entries.options.async_configure(
             result["flow_id"], {const.DEV_SERIAL: "CCC333", const.DEV_NAME: "Side"})
     assert result["type"] == FlowResultType.CREATE_ENTRY
@@ -149,26 +149,21 @@ async def test_settings_rejected_form_keeps_what_was_typed(hass):
 
 async def test_add_duplicate_serial_is_rejected_without_a_query(hass):
     entry, result = await _open(hass, "add_device")
-    with patch("custom_components.geodrops.config_flow.make_client") as make_client:
-        result = await hass.config_entries.options.async_configure(
-            result["flow_id"], {const.DEV_SERIAL: " aaa111", const.DEV_NAME: "Again"})
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {const.DEV_SERIAL: " aaa111", const.DEV_NAME: "Again"})
     assert result["errors"] == {"base": "duplicate_device"}
-    make_client.assert_not_called()
+    assert FakeGeoDropsClient.created == []
     await _assert_add_device_recovers(hass, entry, result)
 
 
-@pytest.mark.parametrize(("patches", "error"), [
-    ({"lookup_serial": {"return_value": None}}, "device_not_found"),
-    ({"lookup_serial": {"side_effect": QueryError("503")}}, "cannot_connect"),
-    ({"lookup_serial": {"side_effect": AuthError("invalid_grant")}}, "invalid_auth"),
-    ({"make_client": {"side_effect": CredentialsError("bad")}}, "invalid_credentials"),
+@pytest.mark.parametrize(("exc", "error"), [
+    (GeoDropsConnectionError("503"), "cannot_connect"),
+    (GeoDropsAuthError("invalid_grant"), "invalid_auth"),
+    (RuntimeError("bug"), "unknown"),
 ])
-async def test_add_device_errors(hass, patches, error):
+async def test_add_device_errors(hass, exc, error):
     entry, result = await _open(hass, "add_device")
-    kw = {"make_client": {"return_value": MagicMock()},
-          "lookup_serial": {"return_value": _reading()}, **patches}
-    with patch("custom_components.geodrops.config_flow.make_client", **kw["make_client"]), \
-         patch("custom_components.geodrops.config_flow.lookup_serial", **kw["lookup_serial"]):
+    with patch_client("lookup_serial", side_effect=exc):
         result = await hass.config_entries.options.async_configure(
             result["flow_id"], {const.DEV_SERIAL: "BBB222", const.DEV_NAME: "Back"})
     assert result["step_id"] == "add_device"
@@ -177,17 +172,32 @@ async def test_add_device_errors(hass, patches, error):
     await _assert_add_device_recovers(hass, entry, result)
 
 
-async def test_add_device_saves_id_and_area_and_closes_client(hass):
+async def test_add_unknown_serial(hass):
     entry, result = await _open(hass, "add_device")
-    client = MagicMock()
-    with patch("custom_components.geodrops.config_flow.make_client", return_value=client), \
-         patch("custom_components.geodrops.config_flow.lookup_serial", return_value=_reading()):
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {const.DEV_SERIAL: "BBB222", const.DEV_NAME: "Back"})
+    assert result["errors"] == {"base": "device_not_found"}
+    await _assert_add_device_recovers(hass, entry, result)
+
+
+async def test_add_device_with_unparseable_stored_key(hass):
+    entry, result = await _open(hass, "add_device")
+    with patch_client_init(GeoDropsCredentialsError("bad")):
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {const.DEV_SERIAL: "BBB222", const.DEV_NAME: "Back"})
+    assert result["errors"] == {"base": "invalid_credentials"}
+
+
+async def test_add_device_saves_id_and_area(hass):
+    entry, result = await _open(hass, "add_device")
+    with patch_client("lookup_serial", return_value=_reading()) as lookup:
         await hass.config_entries.options.async_configure(
             result["flow_id"],
             {const.DEV_SERIAL: "BBB222", const.DEV_NAME: "Back", const.DEV_AREA: "garden"})
+    lookup.assert_awaited_once_with("BBB222", const.DEFAULT_LOOKBACK_HOURS)
+    assert FakeGeoDropsClient.created[0] == ("p", '{"type":"x"}')   # the stored key
     assert entry.options[const.CONF_DEVICES][1] == {
         "serial": "BBB222", "device_id": 1002, "name": "Back", "area_id": "garden"}
-    client.close.assert_called_once()
 
 
 async def test_remove_with_no_probes_aborts(hass):

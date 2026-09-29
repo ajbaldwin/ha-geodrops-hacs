@@ -15,9 +15,10 @@ all you want is soil-moisture data in Home Assistant.
 
 GeoDrops probes publish their readings to a BigQuery table
 (`geodrops-prod.db_public.p_sensor_unified`) that GeoDrops has made publicly
-readable. This integration polls that table directly from Home Assistant's
-BigQuery client library, on a timer, and turns the latest reading per probe
-into sensor entities. There's no MQTT broker, no intermediate sync process,
+readable. This integration polls that table directly from Home Assistant,
+using the [aiogeodrops](https://github.com/ajbaldwin/aiogeodrops) library
+over BigQuery's REST API, and turns the latest reading per probe into sensor
+entities. There's no MQTT broker, no intermediate sync process,
 and no polling service to keep alive outside of Home Assistant itself.
 
 ### Supported devices
