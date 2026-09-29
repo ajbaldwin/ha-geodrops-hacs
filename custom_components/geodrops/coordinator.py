@@ -5,14 +5,21 @@ from datetime import timedelta
 import logging
 
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .bigquery_api import fetch_latest, AuthError, QueryError
+from .bigquery_api import fetch_latest, AccessDeniedError, AuthError, QueryError
 from .transform import classify_staleness, data_age_hours
 from . import const
 
 _LOGGER = logging.getLogger(__name__)
+
+TROUBLESHOOTING_URL = "https://github.com/ajbaldwin/ha-geodrops-hacs#troubleshooting"
+
+
+def access_denied_issue_id(entry_id):
+    return f"access_denied_{entry_id}"
 
 
 class GeoDropsCoordinator(DataUpdateCoordinator):
@@ -49,15 +56,26 @@ class GeoDropsCoordinator(DataUpdateCoordinator):
         ids = self.device_ids
         if not ids:
             self._seen = {}
+            self._clear_access_denied()
             return {}
         try:
             data = await self.hass.async_add_executor_job(
                 fetch_latest, self.client, ids, self.lookback_hours
             )
         except AuthError as err:
-            raise ConfigEntryAuthFailed(str(err)) from err
+            raise ConfigEntryAuthFailed(
+                translation_domain=const.DOMAIN, translation_key="auth_failed",
+                translation_placeholders={"error": str(err)}) from err
+        except AccessDeniedError as err:
+            self._raise_access_denied(err)
+            raise UpdateFailed(
+                translation_domain=const.DOMAIN, translation_key="access_denied",
+                translation_placeholders={"error": str(err)}) from err
         except QueryError as err:
-            raise UpdateFailed(str(err)) from err
+            raise UpdateFailed(
+                translation_domain=const.DOMAIN, translation_key="query_failed",
+                translation_placeholders={"error": str(err)}) from err
+        self._clear_access_denied()
         now = dt_util.utcnow()
         for device_id in data:
             self._seen[device_id] = now
@@ -72,6 +90,20 @@ class GeoDropsCoordinator(DataUpdateCoordinator):
         self._seen = {d: t for d, t in self._seen.items() if d in ids}
         self._log_staleness(merged, now)
         return merged
+
+    def _raise_access_denied(self, err):
+        """Only a change in GCP fixes a 403, so tell the user in Repairs."""
+        ir.async_create_issue(
+            self.hass, const.DOMAIN, access_denied_issue_id(self.entry.entry_id),
+            is_fixable=False, severity=ir.IssueSeverity.ERROR,
+            translation_key="access_denied",
+            translation_placeholders={
+                "project_id": self.entry.data[const.CONF_PROJECT_ID], "error": str(err)},
+            learn_more_url=TROUBLESHOOTING_URL,
+        )
+
+    def _clear_access_denied(self):
+        ir.async_delete_issue(self.hass, const.DOMAIN, access_denied_issue_id(self.entry.entry_id))
 
     def _log_staleness(self, readings, now):
         """Warn once when a probe's data passes "warn after"; note when it recovers."""

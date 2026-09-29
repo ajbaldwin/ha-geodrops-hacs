@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
@@ -34,4 +34,12 @@ def mock_setup_entry():
         return True
 
     with patch("custom_components.geodrops.async_setup_entry", side_effect=_setup):
+        yield
+
+
+@pytest.fixture
+def entity_registry_enabled_by_default():
+    """Create disabled-by-default sensors enabled (HA core's fixture of the same name)."""
+    with patch("homeassistant.helpers.entity.Entity.entity_registry_enabled_default",
+               new_callable=PropertyMock, return_value=True):
         yield

@@ -20,6 +20,22 @@ BigQuery client library, on a timer, and turns the latest reading per probe
 into sensor entities. There's no MQTT broker, no intermediate sync process,
 and no polling service to keep alive outside of Home Assistant itself.
 
+### Supported devices
+
+Any GeoDrops soil probe that reports to GeoDrops' cloud, i.e. whose readings
+appear in the GeoDrops app. The integration never talks to a probe directly,
+so a probe that isn't uploading to GeoDrops can't be added. No other brand of
+soil sensor is supported.
+
+### Use cases
+
+- **Smarter irrigation.** Skip or shorten a watering run when the soil is
+  already moist, instead of relying on a fixed schedule or rain forecasts.
+- **Plant and lawn care alerts.** Get notified when a bed dries out, or when
+  soil temperature drops towards frost.
+- **Probe upkeep.** Know when a probe's battery runs low or it stops
+  reporting, before its readings go stale.
+
 ## Prerequisites
 
 You need a Google Cloud Platform (GCP) project of your own — this is where
@@ -165,6 +181,12 @@ threshold (judged by both its sync delay and the reading's own timestamp)
 goes unavailable entirely. Once a probe's data is older than "warn after", a
 warning is written to the Home Assistant log (once, until it reports again).
 
+Battery, Sync Delay, Last Reading and Quality Depth 1–3 are **diagnostic**
+sensors: they are listed under *Diagnostic* on the device page and left off
+auto-generated dashboards. Sync Delay and Quality Depth 1–3 are also
+**disabled by default** on newly added probes; enable them from the device
+page if you want them. Probes added before this change keep all 16 enabled.
+
 ### States for automations
 
 Moisture State and the three Quality sensors show friendly labels in the UI,
@@ -178,6 +200,47 @@ against) are stable keys:
 
 A value GeoDrops doesn't classify is Home Assistant's own `unknown`.
 
+### Automation examples
+
+The examples use a probe named "Front"; replace `front` in the entity ids with
+your probe's name.
+
+Only water when the soil is dry, as a condition in an existing irrigation
+automation:
+
+```yaml
+conditions:
+  - condition: state
+    entity_id: sensor.front_moisture_state
+    state: ["dry", "dry_plus"]
+```
+
+Get notified when a probe's battery is low:
+
+```yaml
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.front_battery
+    below: 20
+actions:
+  - action: notify.notify
+    data:
+      message: "GeoDrops probe Front battery is at {{ states('sensor.front_battery') }}%."
+```
+
+Warn about near-freezing soil:
+
+```yaml
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.front_surface_temperature
+    below: 2
+actions:
+  - action: notify.notify
+    data:
+      message: "Soil surface at the Front probe is {{ states('sensor.front_surface_temperature') }} °C."
+```
+
 ## Polling and cost
 
 The integration issues **one BigQuery query per poll**, covering the latest
@@ -187,6 +250,62 @@ integration's options (Settings → Devices & Services → GeoDrops →
 Configure → Advanced Options), along with the lookback window
 and staleness thresholds. At this query pattern and a typical handful of
 probes, usage stays well within BigQuery's free tier.
+
+## Known limitations
+
+- **Readings are only as fresh as GeoDrops' upload.** A probe syncs to
+  GeoDrops periodically (see its Sync Delay sensor), and the integration
+  polls every 20 minutes by default, so a value can be hours old. Last
+  Reading shows when it was taken.
+- **Cloud only.** Readings come from GeoDrops' BigQuery table through Google
+  Cloud; there is no local API. If Google, GeoDrops or your internet
+  connection is down, sensors keep their last value until "Expire after"
+  and then go unavailable.
+- **GeoDrops' table is briefly empty about twice a day.** A poll during that
+  window finds nothing; each probe keeps its last reading.
+- **Probes are added by serial, not discovered.** The table is shared by all
+  GeoDrops users, so the integration can't list "your" probes.
+- **Adding a probe only searches the last 12 hours**, whatever the lookback
+  setting. A probe that hasn't reported in that time can't be added until it
+  does.
+- **Moisture reads `unknown` during a new probe's training period**, until
+  GeoDrops has calibrated it.
+
+## Troubleshooting
+
+**"No readings found for that serial"** when adding a probe. Check the
+serial against the GeoDrops app, and that the probe has reported in the last
+12 hours.
+
+**"Could not query BigQuery"** during setup, or a **"GeoDrops can't query
+BigQuery"** repair (Settings → System → Repairs). Google refused the query.
+Check that:
+
+1. The project id is your own GCP project, not GeoDrops'.
+2. The BigQuery API is enabled on that project.
+3. The service account has **BigQuery Job User** on that project.
+
+GeoDrops keeps retrying, and the repair clears itself on the first query that
+succeeds.
+
+**GeoDrops asks to re-authenticate.** Google stopped accepting the key. See
+[Rotating the key or changing project](#rotating-the-key-or-changing-project).
+
+**A probe's sensors are unavailable.** Its latest reading is older than
+"Mark unavailable after", or no reading has come back from a poll for
+"Expire after". Check that the probe is reporting in the GeoDrops app, and
+enable its Sync Delay sensor to see how far behind it is.
+
+**Moisture sensors show `unknown`.** The probe is still in its training
+period, or GeoDrops didn't report that value. Temperatures and battery still
+update.
+
+**Reporting a problem.** Enable debug logging (Settings → Devices & services
+→ GeoDrops → ⋮ → Enable debug logging), reproduce the problem, then disable
+it to download the log. Also download diagnostics from the same menu; they
+include each probe's last reading and the last error, with the key and
+project id removed. Attach both to an
+[issue](https://github.com/ajbaldwin/ha-geodrops-hacs/issues).
 
 ## Removing the integration
 

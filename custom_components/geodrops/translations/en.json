@@ -123,6 +123,26 @@
       "no_devices": "There are no probes to remove."
     }
   },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Google rejected the stored service-account key: {error}"
+    },
+    "invalid_credentials": {
+      "message": "The stored service-account key could not be parsed: {error}"
+    },
+    "access_denied": {
+      "message": "Google denied access to BigQuery: {error}"
+    },
+    "query_failed": {
+      "message": "Could not query BigQuery: {error}"
+    }
+  },
+  "issues": {
+    "access_denied": {
+      "title": "GeoDrops can't query BigQuery",
+      "description": "Google denied the service account access to BigQuery in project {project_id}. Check that the BigQuery API is enabled on the project and that the service account has the BigQuery Job User role. GeoDrops keeps retrying, and this message goes away once a query succeeds.\n\nGoogle's error: {error}"
+    }
+  },
   "entity": {
     "sensor": {
       "moisture": {

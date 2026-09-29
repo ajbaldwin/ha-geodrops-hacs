@@ -18,12 +18,12 @@ Assessed against v0.6.0-beta.3 (commit `8fe1b99`), 2026-09-29.
 | --- | --- | --- | --- | --- | --- |
 | Bronze | 20 | 15 | 5 | 0 | None |
 | Silver | 10 | 9 | 1 | 0 | None |
-| Gold | 21 | 6 | 3 | 9 + 3 partial | Diagnostics, entity metadata, exception translations, repairs, docs |
+| Gold | 21 | 18 | 3 | 0 | None |
 | Platinum | 3 | 0 | 0 | 3 | Replace `google-cloud-bigquery` with an async, typed library |
 
 The codebase is in good shape for its tier: runtime data, coordinator,
 reauth, reconfigure, translated entity names, icon translations and 99 % test
-coverage are already in place. Bronze and Silver are complete. Gold is mostly metadata and documentation. Platinum is the one large
+coverage are already in place. Bronze and Silver are complete. Gold is complete. Platinum is the one large
 refactor: the BigQuery client.
 
 ---
@@ -105,28 +105,28 @@ refactor: the BigQuery client.
 | Rule | Status | Notes |
 | --- | --- | --- |
 | devices | Done | One device per probe with serial and model. |
-| diagnostics | **To do** | Already on the deferred list. |
+| diagnostics | Done | `diagnostics.py`; key and project id redacted, including from the last error. |
 | discovery | Exempt | Cloud data source; nothing to discover on the network. |
 | discovery-update-info | Exempt | Same. |
-| docs-data-update | Done | README "Polling and cost". Add the per-probe availability rules there. |
-| docs-examples | **To do** | No automation examples. |
-| docs-known-limitations | **To do** | |
-| docs-supported-devices | **Partial** | Implied; state it explicitly. |
+| docs-data-update | Done | README "Polling and cost", "Advanced Options" and the availability rules under "Sensors". |
+| docs-examples | Done | README "Automation examples". |
+| docs-known-limitations | Done | README "Known limitations". |
+| docs-supported-devices | Done | README "Supported devices". |
 | docs-supported-functions | Done | Sensor tables. |
-| docs-troubleshooting | **To do** | Only key rotation is covered. |
-| docs-use-cases | **To do** | |
+| docs-troubleshooting | Done | README "Troubleshooting"; the repair issue links to it. |
+| docs-use-cases | Done | README "Use cases". |
 | dynamic-devices | Exempt | GeoDrops' table is public and shared; there is no per-account device list to watch. Probes are user-declared by serial. |
-| entity-category | **To do** | No entity has a category. |
-| entity-device-class | **Partial** | Sync Delay has a unit but no device class. |
-| entity-disabled-by-default | **To do** | All 16 sensors are enabled. |
+| entity-category | Done | Battery, Sync Delay, Last Reading, Quality Depth 1–3 are diagnostic. |
+| entity-device-class | Done | Sync Delay is a duration. Avg. 7-Day Sun is hours per day, a rate, so it has none. |
+| entity-disabled-by-default | Done | Sync Delay and Quality Depth 1–3, for newly added probes. |
 | entity-translations | Done | |
-| exception-translations | **To do** | `ConfigEntryAuthFailed(str(err))` and `UpdateFailed(str(err))`. |
+| exception-translations | Done | `exceptions` in `strings.json`; every raised HA exception uses a translation key. |
 | icon-translations | Done | `icons.json` with state icons. |
 | reconfiguration-flow | Done | |
-| repair-issues | **To do** | Permission errors need action in GCP but only log. |
-| stale-devices | **Partial** | Options-flow removal cleans up; the device page cannot delete a probe. |
+| repair-issues | Done | A non-transient 403 raises an `access_denied` repair, cleared by the next successful poll or on entry removal. |
+| stale-devices | Done | Options-flow removal, plus `async_remove_config_entry_device` for the device page. |
 
-### Changes
+### Changes (done)
 
 1. **Diagnostics** (new `diagnostics.py`).
    `async_get_config_entry_diagnostics` returning `entry.data` with
@@ -300,8 +300,8 @@ Also from the guidelines:
 | Release | Content | Estimate |
 | --- | --- | --- |
 | 0.6.x | Bronze + Silver fixes: field descriptions, recovery tests, removal docs, `PARALLEL_UPDATES`, options table | Done |
-| 0.7.0 | Gold code: diagnostics, entity category/class/disabled-by-default, exception translations, repair issue, device-page removal | 1–2 days |
-| 0.7.x | Gold docs: use cases, examples, limitations, supported devices, troubleshooting | 3–4 hours |
+| 0.7.0 | Gold code: diagnostics, entity category/class/disabled-by-default, exception translations, repair issue, device-page removal | Done |
+| 0.7.x | Gold docs: use cases, examples, limitations, supported devices, troubleshooting | Done |
 | 0.8.0 | Ruff/docstring cleanup and full type annotations + mypy CI | 1 day |
 | 1.0.0 | `aiogeodrops` library, then switch the integration to it | 3–5 days |
 

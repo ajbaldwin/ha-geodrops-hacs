@@ -1,8 +1,14 @@
+import pytest
 from unittest.mock import patch, MagicMock
 from homeassistant.config_entries import ConfigEntryState, SOURCE_REAUTH
+from homeassistant.const import EntityCategory
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from custom_components.geodrops import const
-from custom_components.geodrops.bigquery_api import AuthError, CredentialsError, QueryError
+from homeassistant.helpers import issue_registry as ir
+from custom_components.geodrops import async_remove_config_entry_device, const
+from custom_components.geodrops.bigquery_api import (
+    AccessDeniedError, AuthError, CredentialsError, QueryError,
+)
 from custom_components.geodrops.transform import DeviceReading
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -56,6 +62,7 @@ async def test_setup_creates_16_sensors_then_unloads(hass):
     client.close.assert_called_once()   # every reload used to leak an HTTP session
 
 
+@pytest.mark.usefixtures("entity_registry_enabled_by_default")
 async def test_entity_ids_names_and_states(hass):
     # translated names must produce the same entity ids as the old hard-coded ones
     entry = _entry(hass)
@@ -162,3 +169,116 @@ async def test_key_rejected_after_setup_starts_reauth(hass):
         await hass.async_block_till_done()
     assert not coordinator.last_update_success
     assert len(_reauth_flows(hass)) == 1
+
+
+async def test_diagnostic_and_disabled_sensors(hass):
+    entry = _entry(hass)
+    with _patch_client(), _patch_fetch():
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    registry = er.async_get(hass)
+    entries = {e.unique_id.removeprefix("AAA111_"): e
+               for e in er.async_entries_for_config_entry(registry, entry.entry_id)}
+    diagnostic = {k for k, e in entries.items() if e.entity_category is EntityCategory.DIAGNOSTIC}
+    assert diagnostic == {"battery", "sync_delay", "last_reading", "qcn_d1", "qcn_d2", "qcn_d3"}
+    disabled = {k for k, e in entries.items()
+                if e.disabled_by is er.RegistryEntryDisabler.INTEGRATION}
+    assert disabled == {"sync_delay", "qcn_d1", "qcn_d2", "qcn_d3"}
+    assert hass.states.get("sensor.front_quality_depth_1") is None
+    assert hass.states.get("sensor.front_dominant_moisture").state == "42.0"
+
+
+def _issues(hass):
+    return [key for key in ir.async_get(hass).issues if key[0] == const.DOMAIN]
+
+
+async def test_access_denied_raises_a_repair_issue_until_a_query_succeeds(hass):
+    entry = _entry(hass)
+    with _patch_client(), _patch_fetch(side_effect=AccessDeniedError("403 Access Denied")):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.SETUP_RETRY   # keeps retrying, no reauth
+    assert _reauth_flows(hass) == []
+    issue = ir.async_get(hass).async_get_issue(const.DOMAIN, f"access_denied_{entry.entry_id}")
+    assert issue.translation_key == "access_denied"
+    assert issue.translation_placeholders == {"project_id": "p", "error": "403 Access Denied"}
+    assert not issue.is_fixable
+
+    with _patch_client(), _patch_fetch():
+        await hass.config_entries.async_reload(entry.entry_id)
+        await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.LOADED
+    assert _issues(hass) == []
+
+
+async def test_other_query_errors_raise_no_repair_issue(hass):
+    entry = _entry(hass)
+    with _patch_client(), _patch_fetch(side_effect=QueryError("503")):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.SETUP_RETRY
+    assert _issues(hass) == []
+
+
+async def test_removing_the_entry_removes_its_repair_issue(hass):
+    entry = _entry(hass)
+    with _patch_client(), _patch_fetch(side_effect=AccessDeniedError("403")):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    assert len(_issues(hass)) == 1
+    await hass.config_entries.async_remove(entry.entry_id)
+    await hass.async_block_till_done()
+    assert _issues(hass) == []
+
+
+async def test_errors_are_translated(hass):
+    entry = _entry(hass)
+    with _patch_client(), _patch_fetch():
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    coordinator = entry.runtime_data
+    for exc, key in ((QueryError("503"), "query_failed"),
+                     (AccessDeniedError("403"), "access_denied"),
+                     (AuthError("invalid_grant"), "auth_failed")):
+        with _patch_fetch(side_effect=exc):
+            await coordinator.async_refresh()
+        err = coordinator.last_exception
+        assert (err.translation_domain, err.translation_key) == (const.DOMAIN, key)
+        assert err.translation_placeholders == {"error": str(exc)}
+
+
+async def test_unparseable_key_error_is_translated(hass):
+    from homeassistant.exceptions import ConfigEntryAuthFailed
+    from custom_components.geodrops import async_setup_entry
+    entry = _entry(hass)
+    with _patch_client(side_effect=CredentialsError("bad json")), \
+         pytest.raises(ConfigEntryAuthFailed) as info:
+        await async_setup_entry(hass, entry)
+    assert info.value.translation_key == "invalid_credentials"
+
+
+async def test_deleting_a_probe_from_its_device_page(hass):
+    entry = _entry(hass)
+    hass.config_entries.async_update_entry(entry, options={const.CONF_DEVICES: [
+        {"serial": "AAA111", "device_id": 1001, "name": "Front"},
+        {"serial": "BBB222", "device_id": 1002, "name": "Back"}]})
+    with _patch_client(), _patch_fetch():
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    device = dr.async_get(hass).async_get_device(identifiers={(const.DOMAIN, "AAA111")})
+
+    assert await async_remove_config_entry_device(hass, entry, device)
+    assert [d["serial"] for d in entry.options[const.CONF_DEVICES]] == ["BBB222"]
+    assert entry.runtime_data.device_ids == [1002]   # no longer polled
+
+
+async def test_deleting_an_unknown_device_leaves_probes_alone(hass):
+    entry = _entry(hass)
+    with _patch_client(), _patch_fetch():
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    orphan = dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id, identifiers={(const.DOMAIN, "ZZZ999")})
+
+    assert await async_remove_config_entry_device(hass, entry, orphan)
+    assert [d["serial"] for d in entry.options[const.CONF_DEVICES]] == ["AAA111"]
