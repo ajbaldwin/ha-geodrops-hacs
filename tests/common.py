@@ -1,4 +1,5 @@
 """Test helpers shared across the GeoDrops tests."""
+
 from unittest.mock import AsyncMock, patch
 
 
@@ -10,8 +11,8 @@ class FakeGeoDropsClient:
     already exist (e.g. the coordinator's) as well as ones created later.
     """
 
-    created = []        # (project_id, credentials) of every client made
-    init_error = None   # raised by the constructor when set
+    created = []  # (project_id, credentials) of every client made
+    init_error = None  # raised by the constructor when set
 
     def __init__(self, session, project_id, credentials):
         if self.init_error is not None:

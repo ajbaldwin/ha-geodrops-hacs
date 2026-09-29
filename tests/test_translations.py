@@ -1,6 +1,6 @@
 import json
-import re
 from pathlib import Path
+import re
 
 from custom_components.geodrops.sensor import SENSOR_DESCRIPTIONS
 
@@ -31,7 +31,9 @@ def test_every_sensor_has_a_translated_name_with_its_placeholders():
     strings = _sensor_strings()
     for spec in SENSOR_DESCRIPTIONS:
         name = strings[spec.translation_key]["name"]
-        assert set(re.findall(r"{(\w+)}", name)) == set(spec.translation_placeholders or {}), spec.key
+        assert set(re.findall(r"{(\w+)}", name)) == set(
+            spec.translation_placeholders or {}
+        ), spec.key
 
 
 def test_no_unused_sensor_translations():
@@ -41,8 +43,12 @@ def test_no_unused_sensor_translations():
 def test_every_enum_state_has_a_label_and_an_icon():
     strings, icons = _sensor_strings(), _load("icons.json")["entity"]["sensor"]
     for spec in _enum_specs():
-        assert set(strings[spec.translation_key]["state"]) == set(spec.options or []), spec.key
-        assert set(icons[spec.translation_key]["state"]) == set(spec.options or []), spec.key
+        assert set(strings[spec.translation_key]["state"]) == set(spec.options or []), (
+            spec.key
+        )
+        assert set(icons[spec.translation_key]["state"]) == set(spec.options or []), (
+            spec.key
+        )
 
 
 def test_icons_only_reference_real_sensors():
