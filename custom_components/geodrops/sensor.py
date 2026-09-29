@@ -10,7 +10,6 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTemperature, UnitOfTime
 from homeassistant.helpers import area_registry as ar
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
@@ -157,28 +156,11 @@ class GeoDropsSensor(CoordinatorEntity, SensorEntity):
         return self._spec.value(r)
 
 
-_QCN_SUFFIXES = tuple(f"_{s.suffix}" for s in SENSOR_SPECS if s.translation_key == "qcn_depth")
-
-
 def build_sensors(coordinator, device):
     return [GeoDropsSensor(coordinator, device, spec) for spec in SENSOR_SPECS]
 
 
-def _reenable_quality_sensors(hass, entry):
-    """Undo 0.6.0-beta.4, which created Quality sensors disabled on new probes.
-
-    Only entities the integration disabled are touched; one a user disabled
-    stays disabled. Home Assistant reloads the entry once afterwards.
-    """
-    registry = er.async_get(hass)
-    for entity in er.async_entries_for_config_entry(registry, entry.entry_id):
-        if (entity.disabled_by is er.RegistryEntryDisabler.INTEGRATION
-                and entity.unique_id.endswith(_QCN_SUFFIXES)):
-            registry.async_update_entity(entity.entity_id, disabled_by=None)
-
-
 async def async_setup_entry(hass, entry, async_add_entities):
-    _reenable_quality_sensors(hass, entry)
     coordinator = entry.runtime_data
     entities = []
     for device in entry.options.get(const.CONF_DEVICES, []):

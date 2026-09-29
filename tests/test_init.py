@@ -284,25 +284,3 @@ async def test_deleting_an_unknown_device_leaves_probes_alone(hass):
 
     assert await async_remove_config_entry_device(hass, entry, orphan)
     assert [d["serial"] for d in entry.options[const.CONF_DEVICES]] == ["AAA111"]
-
-
-async def test_quality_sensors_disabled_by_beta4_are_re_enabled(hass):
-    entry = _entry(hass)
-    registry = er.async_get(hass)
-    for suffix, disabler in (("qcn_d1", er.RegistryEntryDisabler.INTEGRATION),
-                             ("qcn_d2", er.RegistryEntryDisabler.USER),
-                             ("sync_delay", er.RegistryEntryDisabler.INTEGRATION)):
-        registry.async_get_or_create(
-            "sensor", const.DOMAIN, f"AAA111_{suffix}", config_entry=entry,
-            disabled_by=disabler)
-    with _patch_client(), _patch_fetch():
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-    def disabled_by(suffix):
-        return registry.async_get(registry.async_get_entity_id(
-            "sensor", const.DOMAIN, f"AAA111_{suffix}")).disabled_by
-
-    assert disabled_by("qcn_d1") is None                                   # beta.4 leftover
-    assert disabled_by("qcn_d2") is er.RegistryEntryDisabler.USER          # the user's choice
-    assert disabled_by("sync_delay") is er.RegistryEntryDisabler.INTEGRATION
