@@ -19,7 +19,7 @@ Assessed against v0.6.0-beta.3 (commit `8fe1b99`), 2026-09-29.
 | Bronze | 20 | 15 | 5 | 0 | None |
 | Silver | 10 | 9 | 1 | 0 | None |
 | Gold | 21 | 18 | 3 | 0 | None |
-| Platinum | 3 | 0 | 0 | 3 | Replace `google-cloud-bigquery` with an async, typed library |
+| Platinum | 3 | 2 | 0 | 1 | Strict typing of the integration |
 
 The codebase is in good shape for its tier: runtime data, coordinator,
 reauth, reconfigure, translated entity names, icon translations and 99 % test
@@ -190,9 +190,9 @@ Worth doing if the options flow grows; not required for Gold.
 
 | Rule | Status | Notes |
 | --- | --- | --- |
-| async-dependency | **To do** | `google-cloud-bigquery` is synchronous (`requests`); every call runs in the executor. |
-| inject-websession | **To do** | The client owns its own HTTP session. |
-| strict-typing | **To do** | 93 missing annotations (ruff `ANN`); no mypy in CI. |
+| async-dependency | Done | [`aiogeodrops`](https://github.com/ajbaldwin/aiogeodrops): async, aiohttp + PyJWT only. |
+| inject-websession | Done | The client uses `async_get_clientsession(hass)`. |
+| strict-typing | **Partial** | `aiogeodrops` ships `py.typed` and passes `mypy --strict`; the integration itself is not yet annotated and has no mypy CI job. |
 
 All three rules point at the same refactor: replace
 `google-cloud-bigquery` with a small async library.
@@ -305,7 +305,7 @@ Also from the guidelines:
 | 0.7.0 | Gold code: diagnostics, entity category/class/disabled-by-default, exception translations, repair issue, device-page removal | Done |
 | 0.7.x | Gold docs: use cases, examples, limitations, supported devices, troubleshooting | Done |
 | 0.8.0 | Ruff/docstring cleanup and full type annotations + mypy CI | 1 day |
-| 1.0.0 | `aiogeodrops` library, then switch the integration to it | 3–5 days |
+| 1.0.0 | `aiogeodrops` library, then switch the integration to it | Done (pending PyPI release) |
 
 The 1.0.0 step is the only risky one: it replaces the whole data path. Ship
 it as a beta and compare readings against 0.8 on a live install before

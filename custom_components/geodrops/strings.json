@@ -54,7 +54,8 @@
       "invalid_credentials": "The service-account JSON could not be parsed.",
       "cannot_connect": "Could not query BigQuery. Check the project id and that the service account has BigQuery Job User.",
       "device_not_found": "No readings found for that serial in the last 12 hours. Check the serial.",
-      "invalid_auth": "Google rejected this service-account key. It may have been deleted or revoked, or its service account disabled. Create a new JSON key and try again."
+      "invalid_auth": "Google rejected this service-account key. It may have been deleted or revoked, or its service account disabled. Create a new JSON key and try again.",
+      "unknown": "Unexpected error. Check the Home Assistant log for details."
     },
     "abort": {
       "already_configured": "This GeoDrops project is already configured.",
@@ -117,7 +118,8 @@
       "invalid_auth": "Google rejected the stored service-account key. Update it via the integration's Reconfigure option, then try again.",
       "invalid_credentials": "The stored service-account JSON could not be parsed. Paste a new key via the integration's Reconfigure option, then try again.",
       "warn_above_skip": "Must not be more than \"Mark unavailable after\".",
-      "expire_below_interval": "Must be longer than the poll interval, or sensors go unavailable between polls."
+      "expire_below_interval": "Must be longer than the poll interval, or sensors go unavailable between polls.",
+      "unknown": "Unexpected error. Check the Home Assistant log for details."
     },
     "abort": {
       "no_devices": "There are no probes to remove."

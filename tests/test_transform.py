@@ -1,11 +1,16 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
+
+from aiogeodrops import DeviceReading
 
 from custom_components.geodrops import transform as t
 
 
-class Row:
-    def __init__(self, **kw):
-        self.__dict__.update(kw)
+def _reading(**changes):
+    base = dict(device_id=1, sync_delay_hours=None, moisture_index=-1, moisture_pct=None,
+                moisture_d1=None, moisture_d2=None, moisture_d3=None, temp_surface=None,
+                temp_d1=None, temp_d2=None, temp_d3=None, battery_pct=None, sun_7d=None,
+                qcn_d1=-1, qcn_d2=-1, qcn_d3=-1)
+    return DeviceReading(**{**base, **changes})
 
 
 def test_qcn_and_moisture_state_maps():
@@ -26,52 +31,9 @@ def test_classify_staleness_strict_gt():
     assert t.classify_staleness(13, 6, 12) == "skip"
 
 
-def test_reading_from_row_defaults_and_all_training():
-    row = Row(deviceId=1001, moistureIndex=None, qcnDepth1=None,
-              qcnDepth2=None, qcnDepth3=None)
-    reading = t.reading_from_row(row)
-    assert reading.device_id == 1001
-    assert reading.moisture_index == -1     # _qcn default
-    assert reading.moisture_pct is None     # missing stays unknown, not a fake 0
-    assert t.all_training(reading) is True
-
-
-def test_not_all_training_when_one_depth_known():
-    row = Row(deviceId=1002, qcnDepth1=2, qcnDepth2=None, qcnDepth3=None)
-    reading = t.reading_from_row(row)
-    assert t.all_training(reading) is False
-
-
-def test_missing_numbers_stay_none_but_zero_is_kept():
-    # A NULL temperature/battery must read "unknown", not 0 °C / 0 % (which
-    # fires frost and low-battery automations); a real 0 is still a value
-    row = Row(deviceId=1001, temperatureCDepth1=None, miscBattPercent=0.0)
-    reading = t.reading_from_row(row)
-    assert reading.temp_d1 is None
-    assert reading.temp_surface is None     # column absent entirely
-    assert reading.battery_pct == 0.0
-
-
-def test_read_at_comes_from_the_date_timestamp():
-    when = datetime(2026, 9, 26, 8, 30, tzinfo=timezone.utc)
-    assert t.reading_from_row(Row(deviceId=1, date=when)).read_at == when
-
-
-def test_naive_date_is_treated_as_utc():
-    naive = datetime(2026, 9, 26, 8, 30)
-    assert t.reading_from_row(Row(deviceId=1, date=naive)).read_at == naive.replace(
-        tzinfo=timezone.utc)
-
-
-def test_non_timestamp_date_is_unknown():
-    assert t.reading_from_row(Row(deviceId=1, date=date(2026, 9, 26))).read_at is None
-    assert t.reading_from_row(Row(deviceId=1)).read_at is None
-
-
 def _aged(sync_delay, read_hours_ago, now):
-    row = Row(deviceId=1, miscSensorSyncDelayHour=sync_delay,
-              date=None if read_hours_ago is None else now - timedelta(hours=read_hours_ago))
-    return t.reading_from_row(row)
+    return _reading(sync_delay_hours=sync_delay,
+                    read_at=None if read_hours_ago is None else now - timedelta(hours=read_hours_ago))
 
 
 def test_data_age_grows_with_the_clock_when_the_row_is_frozen():

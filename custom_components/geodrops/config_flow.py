@@ -1,17 +1,22 @@
 """Config flow for GeoDrops."""
 from __future__ import annotations
 
+import logging
+
+from aiogeodrops import (
+    GeoDropsAuthError, GeoDropsClient, GeoDropsCredentialsError, GeoDropsError,
+)
 import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, AreaSelector
 
 from . import const
-from .bigquery_api import (
-    make_client, lookup_serial, validate_access, AuthError, CredentialsError, QueryError,
-)
+
+_LOGGER = logging.getLogger(__name__)
 
 # Advanced Options: (key, default, min, max). The minimum poll interval keeps
 # a typo from querying BigQuery back-to-back.
@@ -44,38 +49,40 @@ def _new_device(user_input, serial, device_id):
     return device
 
 
+def _client(hass, project_id, credentials_json):
+    return GeoDropsClient(async_get_clientsession(hass), project_id, credentials_json)
+
+
 async def _validate_credentials(hass, project_id, credentials_json):
     """Build a client and prove it can query. Returns an error key, or None."""
     try:
-        client = await hass.async_add_executor_job(make_client, project_id, credentials_json)
-    except CredentialsError:
+        await _client(hass, project_id, credentials_json).validate_access()
+    except GeoDropsCredentialsError:
         return "invalid_credentials"
-    try:
-        await hass.async_add_executor_job(validate_access, client)
-    except AuthError:
+    except GeoDropsAuthError:
         return "invalid_auth"
-    except QueryError:
+    except GeoDropsError:
         return "cannot_connect"
-    finally:
-        await hass.async_add_executor_job(client.close)
+    except Exception:
+        _LOGGER.exception("Unexpected error checking the service-account key")
+        return "unknown"
     return None
 
 
 async def _lookup_device_id(hass, project_id, credentials_json, serial):
     """Find a probe's GeoDrops device id by serial. Returns (device_id, error_key)."""
     try:
-        client = await hass.async_add_executor_job(make_client, project_id, credentials_json)
-    except CredentialsError:
+        reading = await _client(hass, project_id, credentials_json).lookup_serial(
+            serial, const.DEFAULT_LOOKBACK_HOURS)
+    except GeoDropsCredentialsError:
         return None, "invalid_credentials"
-    try:
-        reading = await hass.async_add_executor_job(
-            lookup_serial, client, serial, const.DEFAULT_LOOKBACK_HOURS)
-    except AuthError:
+    except GeoDropsAuthError:
         return None, "invalid_auth"
-    except QueryError:
+    except GeoDropsError:
         return None, "cannot_connect"
-    finally:
-        await hass.async_add_executor_job(client.close)
+    except Exception:
+        _LOGGER.exception("Unexpected error looking up probe %s", serial)
+        return None, "unknown"
     if reading is None:
         return None, "device_not_found"
     return reading.device_id, None
