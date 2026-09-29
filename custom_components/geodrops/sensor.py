@@ -20,6 +20,9 @@ from .transform import (
     QCN_OPTIONS, MOISTURE_STATE_OPTIONS,
 )
 
+# The coordinator does all fetching, so entity updates need no limit.
+PARALLEL_UPDATES = 0
+
 
 @dataclass(frozen=True)
 class SensorSpec:

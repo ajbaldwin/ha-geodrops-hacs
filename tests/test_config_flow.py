@@ -16,6 +16,31 @@ def _reading(device_id=1001):
                          battery_pct=90.0, sun_7d=5.0, qcn_d1=2, qcn_d2=2, qcn_d3=2)
 
 
+async def _submit_good_key(hass, flow_id, project="p"):
+    """Submit the credentials step with a key BigQuery accepts."""
+    with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()), \
+         patch("custom_components.geodrops.config_flow.validate_access", return_value=None):
+        return await hass.config_entries.flow.async_configure(
+            flow_id, {const.CONF_PROJECT_ID: project, const.CONF_CREDENTIALS_JSON: '{"type":"x"}'})
+
+
+async def _submit_known_probe(hass, flow_id):
+    """Submit the add-probe step with a serial GeoDrops has readings for."""
+    with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()), \
+         patch("custom_components.geodrops.config_flow.lookup_serial", return_value=_reading()):
+        return await hass.config_entries.flow.async_configure(
+            flow_id, {const.DEV_SERIAL: "AAA111", const.DEV_NAME: "Front"})
+
+
+async def _assert_recovers_to_entry(hass, result):
+    """After an error on the credentials step, fixing the input still creates the entry."""
+    result = await _submit_good_key(hass, result["flow_id"])
+    assert result["step_id"] == "add_device"
+    assert result["errors"] == {}
+    result = await _submit_known_probe(hass, result["flow_id"])
+    assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
+
+
 async def test_full_flow_creates_entry(hass):
     result = await hass.config_entries.flow.async_init(
         const.DOMAIN, context={"source": config_entries.SOURCE_USER})
@@ -48,6 +73,7 @@ async def test_bad_credentials_shows_error(hass):
             result["flow_id"],
             {const.CONF_PROJECT_ID: "p", const.CONF_CREDENTIALS_JSON: "not json"})
     assert result["errors"] == {"base": "invalid_credentials"}
+    await _assert_recovers_to_entry(hass, result)
 
 
 async def test_unknown_serial_shows_error(hass):
@@ -62,6 +88,8 @@ async def test_unknown_serial_shows_error(hass):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {const.DEV_SERIAL: "ZZZ999", const.DEV_NAME: "Nope"})
     assert result["errors"] == {"base": "device_not_found"}
+    result = await _submit_known_probe(hass, result["flow_id"])
+    assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
 
 
 def _existing_entry(hass, project="p", key='{"type":"old"}'):
@@ -84,6 +112,7 @@ async def test_rejected_key_in_user_step_shows_invalid_auth(hass):
             result["flow_id"],
             {const.CONF_PROJECT_ID: "p", const.CONF_CREDENTIALS_JSON: '{"type":"x"}'})
     assert result["errors"] == {"base": "invalid_auth"}
+    await _assert_recovers_to_entry(hass, result)
 
 
 async def test_reauth_replaces_key_and_keeps_probes(hass):
@@ -115,6 +144,14 @@ async def test_reauth_with_another_rejected_key_shows_error(hass):
     assert result["step_id"] == "reauth_confirm"
     assert result["errors"] == {"base": "invalid_auth"}
     assert entry.data[const.CONF_CREDENTIALS_JSON] == '{"type":"old"}'   # untouched
+
+    with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()), \
+         patch("custom_components.geodrops.config_flow.validate_access", return_value=None):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {const.CONF_CREDENTIALS_JSON: '{"type":"new"}'})
+    await hass.async_block_till_done()
+    assert result["reason"] == "reauth_successful"
+    assert entry.data[const.CONF_CREDENTIALS_JSON] == '{"type":"new"}'
 
 
 async def test_reconfigure_blank_key_keeps_stored_key(hass):
@@ -171,6 +208,14 @@ async def test_reconfigure_bad_project_shows_error(hass):
             result["flow_id"], {const.CONF_PROJECT_ID: "typo-project"})
     assert result["errors"] == {"base": "cannot_connect"}
     assert entry.data[const.CONF_PROJECT_ID] == "p"
+
+    with patch("custom_components.geodrops.config_flow.make_client", return_value=MagicMock()), \
+         patch("custom_components.geodrops.config_flow.validate_access", return_value=None):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {const.CONF_PROJECT_ID: "right-project"})
+    await hass.async_block_till_done()
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data[const.CONF_PROJECT_ID] == "right-project"
 
 
 async def _at_add_device(hass, project="p"):
@@ -245,3 +290,5 @@ async def test_probe_lookup_errors(hass, exc, error):
             result["flow_id"], {const.DEV_SERIAL: "AAA111", const.DEV_NAME: "Front"})
     assert result["step_id"] == "add_device"
     assert result["errors"] == {"base": error}
+    result = await _submit_known_probe(hass, result["flow_id"])
+    assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
