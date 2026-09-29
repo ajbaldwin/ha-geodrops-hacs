@@ -63,8 +63,20 @@ self-contained steps below. If that link ever moves, search the
    → Create new key → **JSON**.
 6. **Paste the key's contents into the config flow** at setup (see
    *Configuration* below). Unlike the older MQTT bridge, this integration does
-   **not** need the file placed in `/config` — Home Assistant stores it in the
-   encrypted config entry.
+   **not** need the file placed in `/config`; Home Assistant stores it in its
+   config entry. Then **delete the downloaded key file**.
+
+**Keeping the key safe.** Home Assistant stores config entries unencrypted,
+in `/config/.storage/core.config_entries`, and that file is included in
+backups. Anyone who can read your configuration directory or a backup can use
+the key. With only BigQuery Job User it can run queries billed to your
+project and nothing else, so the risk is cost, not data. To cap that cost, set
+a custom quota in the GCP Console: IAM & Admin → Quotas, BigQuery API,
+*Query usage per day*. About 30 GiB matches BigQuery's free tier of 1 TiB a
+month, which this integration stays well within (see
+[Polling and cost](#polling-and-cost)). If a key may
+have leaked, delete it on the service account's Keys tab and paste a new one
+through **Reconfigure**.
 
 You do **not** need to request access to GeoDrops' data or add any
 reader/viewer grant on the `db_public` dataset — GeoDrops publishes it as a

@@ -1,4 +1,5 @@
-"""GeoDrops sensor platform: 16 sensors per probe."""
+"""GeoDrops sensors: 16 per probe."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -13,7 +14,12 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTemperature, UnitOfTime
+from homeassistant.const import (
+    PERCENTAGE,
+    EntityCategory,
+    UnitOfTemperature,
+    UnitOfTime,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -48,13 +54,16 @@ class GeoDropsSensorEntityDescription(SensorEntityDescription):
     """
 
     value_fn: Callable[[DeviceReading], StateType | datetime]
-    # None while every depth is still training.
+    # Report None while every depth is still training.
     moisture_gated: bool = False
 
 
 def _moisture(
-    key: str, value_fn: Callable[[DeviceReading], float | None], depth: int | None = None
+    key: str,
+    value_fn: Callable[[DeviceReading], float | None],
+    depth: int | None = None,
 ) -> GeoDropsSensorEntityDescription:
+    """Describe a moisture sensor: overall, or at one depth."""
     return GeoDropsSensorEntityDescription(
         key=key,
         translation_key="moisture" if depth is None else "moisture_depth",
@@ -68,8 +77,11 @@ def _moisture(
 
 
 def _temperature(
-    key: str, value_fn: Callable[[DeviceReading], float | None], depth: int | None = None
+    key: str,
+    value_fn: Callable[[DeviceReading], float | None],
+    depth: int | None = None,
 ) -> GeoDropsSensorEntityDescription:
+    """Describe a temperature sensor: at the surface, or at one depth."""
     return GeoDropsSensorEntityDescription(
         key=key,
         translation_key="surface_temperature" if depth is None else "temperature_depth",
@@ -84,6 +96,7 @@ def _temperature(
 def _quality(
     key: str, value_fn: Callable[[DeviceReading], int], depth: int
 ) -> GeoDropsSensorEntityDescription:
+    """Describe a per-depth reading-quality sensor."""
     # Per-depth reading quality: diagnostic, but enabled by default because
     # other integrations (e.g. irrigation schedulers) read these states to
     # decide whether a probe's moisture reading can be trusted. A disabled
@@ -140,7 +153,7 @@ SENSOR_DESCRIPTIONS: tuple[GeoDropsSensorEntityDescription, ...] = (
     _temperature("temp_d1", lambda r: r.temp_d1, depth=1),
     _temperature("temp_d2", lambda r: r.temp_d2, depth=2),
     _temperature("temp_d3", lambda r: r.temp_d3, depth=3),
-    # hours of sun per day: a rate, so not a duration device class
+    # Hours of sun per day is a rate, so it has no duration device class.
     GeoDropsSensorEntityDescription(
         key="sun_7d",
         translation_key="sun_7d",
@@ -159,6 +172,8 @@ SENSOR_DESCRIPTIONS: tuple[GeoDropsSensorEntityDescription, ...] = (
 
 
 class GeoDropsSensor(CoordinatorEntity[GeoDropsCoordinator], SensorEntity):
+    """One value from a probe's latest reading."""
+
     _attr_has_entity_name = True
     entity_description: GeoDropsSensorEntityDescription
 
@@ -168,6 +183,7 @@ class GeoDropsSensor(CoordinatorEntity[GeoDropsCoordinator], SensorEntity):
         device: DeviceConfig,
         description: GeoDropsSensorEntityDescription,
     ) -> None:
+        """Create the sensor for `description` on `device`'s probe."""
         super().__init__(coordinator)
         self.entity_description = description
         self._device = device
@@ -189,10 +205,12 @@ class GeoDropsSensor(CoordinatorEntity[GeoDropsCoordinator], SensorEntity):
 
     @property
     def _reading(self) -> DeviceReading | None:
+        """The probe's latest reading."""
         return self.coordinator.reading(self._device[const.DEV_ID])
 
     @property
     def available(self) -> bool:
+        """Return False when the probe's data is missing, too old or expired."""
         r = self._reading
         if r is None:
             return False
@@ -202,7 +220,9 @@ class GeoDropsSensor(CoordinatorEntity[GeoDropsCoordinator], SensorEntity):
         age = data_age_hours(r, dt_util.utcnow())
         if age is not None and classify_staleness(age, warn, skip) == "skip":
             return False
-        expire: int = options.get(const.CONF_EXPIRE_MINUTES, const.DEFAULT_EXPIRE_MINUTES)
+        expire: int = options.get(
+            const.CONF_EXPIRE_MINUTES, const.DEFAULT_EXPIRE_MINUTES
+        )
         last = self.coordinator.reading_time(self._device[const.DEV_ID])
         if last is None or dt_util.utcnow() - last > timedelta(minutes=expire):
             return False
@@ -210,6 +230,7 @@ class GeoDropsSensor(CoordinatorEntity[GeoDropsCoordinator], SensorEntity):
 
     @property
     def native_value(self) -> StateType | datetime:
+        """Return the sensor's value from the latest reading."""
         r = self._reading
         if r is None:
             return None
@@ -218,7 +239,10 @@ class GeoDropsSensor(CoordinatorEntity[GeoDropsCoordinator], SensorEntity):
         return self.entity_description.value_fn(r)
 
 
-def build_sensors(coordinator: GeoDropsCoordinator, device: DeviceConfig) -> list[GeoDropsSensor]:
+def build_sensors(
+    coordinator: GeoDropsCoordinator, device: DeviceConfig
+) -> list[GeoDropsSensor]:
+    """Create every sensor for one probe."""
     return [GeoDropsSensor(coordinator, device, desc) for desc in SENSOR_DESCRIPTIONS]
 
 
@@ -227,6 +251,7 @@ async def async_setup_entry(
     entry: GeoDropsConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
+    """Add the sensors for every configured probe."""
     coordinator = entry.runtime_data
     entities: list[GeoDropsSensor] = []
     for device in coordinator.devices:

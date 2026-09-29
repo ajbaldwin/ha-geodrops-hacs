@@ -25,9 +25,9 @@ The codebase is in good shape for its tier: runtime data, coordinator,
 reauth, reconfigure, translated entity names, icon translations and 100 % test
 coverage are in place. Bronze, Silver, Gold and Platinum are complete: the
 async `aiogeodrops` library replaces the BigQuery client, and the integration
-passes mypy with Home Assistant core's strict settings. The
-[development-guidelines](#development-guidelines-conformance) cleanup is the
-remaining work.
+passes mypy with Home Assistant core's strict settings. The code also follows
+the [development guidelines](#development-guidelines-conformance): ruff with
+core's configuration runs in CI.
 
 ---
 
@@ -269,27 +269,16 @@ and the three Platinum rules are judged on that library.
 
 ## Development-guidelines conformance
 
-Not quality-scale rules, but a core reviewer blocks on them. A ruff pass with
-HA-style rule families (`D`, `UP`, `I`, `E`, `SIM`, `TRY`, `PL`) finds 81
-issues, 30 auto-fixable:
+Not quality-scale rules, but a core reviewer blocks on them. Done:
 
-| Count | Issue |
-| --- | --- |
-| 36 | Missing docstrings (`D101`–`D107`) |
-| 22 | `Optional[X]` / quoted annotations instead of `X \| None` (`UP045`, `UP037`) |
-| 7 | Imports inside functions (`PLC0415`): the lazy google imports; gone after the library refactor |
-| 6 | Unsorted imports, and `from .transform import …` below code in `bigquery_api.py` (`I001`, `E402`) |
-| 10 | Assorted: `typing.Callable`, `timezone.utc`, `TRY003/301/004`, `SIM103`, `RUF046` |
-
-Also from the guidelines:
-
-- Comments must be full sentences ending in a period (many are lowercase
-  fragments, e.g. `# entry.data keys`).
-- Log messages should not name the integration ("GeoDrops probe %s …"); the
-  logger name already does.
-- Constants should be alphabetical within groups (`const.py`).
-- Add `ruff check` and `ruff format --check` to CI with HA core's
-  `pyproject.toml` ruff settings.
+- `ruff.toml` carries HA core's ruff configuration (2026.2), and CI runs
+  `ruff check` and `ruff format --check`. Tests are exempt only from the
+  docstring rules.
+- Every public module, class and function has a docstring; comments are full
+  sentences.
+- Log messages no longer name the integration; the logger name already does.
+- Constants are alphabetical within their groups (`const.py`).
+- Imports are at module level and sorted core-style.
 
 ## Core parity notes
 
@@ -310,7 +299,7 @@ Also from the guidelines:
 | 0.7.0 | Gold code: diagnostics, entity category/class/disabled-by-default, exception translations, repair issue, device-page removal | Done |
 | 0.7.x | Gold docs: use cases, examples, limitations, supported devices, troubleshooting | Done |
 | 0.8.0 | Full type annotations + mypy CI | Done |
-| 0.8.x | Ruff/docstring cleanup | Half a day |
+| 0.8.x | Ruff/docstring cleanup | Done |
 | 1.0.0 | `aiogeodrops` library, then switch the integration to it | Done (`aiogeodrops` 0.1.0 on PyPI) |
 
 The 1.0.0 step is the only risky one: it replaces the whole data path. Ship

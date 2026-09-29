@@ -1,8 +1,14 @@
-import pytest
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock
+
 from aiogeodrops import DeviceReading, GeoDropsAuthError, GeoDropsQueryError
-from custom_components.geodrops.coordinator import GeoDropsCoordinator
+import pytest
+
 from custom_components.geodrops import const
+from custom_components.geodrops.coordinator import GeoDropsCoordinator
+from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.update_coordinator import UpdateFailed
+from homeassistant.util import dt as dt_util
 
 
 def _client(fetch):
@@ -13,45 +19,65 @@ def _client(fetch):
 
 
 def _reading(device_id, pct):
-    return DeviceReading(device_id=device_id, sync_delay_hours=1.0, moisture_index=2,
-                         moisture_pct=pct, moisture_d1=pct, moisture_d2=pct, moisture_d3=pct,
-                         temp_surface=20.0, temp_d1=20.0, temp_d2=20.0, temp_d3=20.0,
-                         battery_pct=90.0, sun_7d=5.0, qcn_d1=2, qcn_d2=2, qcn_d3=2)
+    return DeviceReading(
+        device_id=device_id,
+        sync_delay_hours=1.0,
+        moisture_index=2,
+        moisture_pct=pct,
+        moisture_d1=pct,
+        moisture_d2=pct,
+        moisture_d3=pct,
+        temp_surface=20.0,
+        temp_d1=20.0,
+        temp_d2=20.0,
+        temp_d3=20.0,
+        battery_pct=90.0,
+        sun_7d=5.0,
+        qcn_d1=2,
+        qcn_d2=2,
+        qcn_d3=2,
+    )
 
 
 async def test_coordinator_fetches_and_maps(hass, monkeypatch):
     entry = MagicMock()
-    entry.options = {const.CONF_DEVICES: [{"serial": "AAA111", "device_id": 1001, "name": "Front"}],
-                     const.CONF_SCAN_INTERVAL: 20, const.CONF_LOOKBACK_HOURS: 12}
+    entry.options = {
+        const.CONF_DEVICES: [{"serial": "AAA111", "device_id": 1001, "name": "Front"}],
+        const.CONF_SCAN_INTERVAL: 20,
+        const.CONF_LOOKBACK_HOURS: 12,
+    }
     client = _client(lambda ids, lb: {1001: _reading(1001, 42.0)})
     coord = GeoDropsCoordinator(hass, entry, client)
     assert coord.reading_time(1001) is None
     data = await coord._async_update_data()
     assert data[1001].moisture_pct == 42.0
     assert coord.device_ids == [1001]
-    assert coord.reading_time(1001) is not None   # FIX 8: a returned row stamps the time
+    assert coord.reading_time(1001) is not None  # FIX 8: a returned row stamps the time
 
 
 async def test_coordinator_does_not_stamp_success_on_failure(hass, monkeypatch):
     entry = MagicMock()
-    entry.options = {const.CONF_DEVICES: [{"serial": "AAA111", "device_id": 1001, "name": "Front"}],
-                     const.CONF_SCAN_INTERVAL: 20, const.CONF_LOOKBACK_HOURS: 12}
+    entry.options = {
+        const.CONF_DEVICES: [{"serial": "AAA111", "device_id": 1001, "name": "Front"}],
+        const.CONF_SCAN_INTERVAL: 20,
+        const.CONF_LOOKBACK_HOURS: 12,
+    }
 
     def _raise(ids, lb):
         raise GeoDropsQueryError("boom")
 
     client = _client(_raise)
     coord = GeoDropsCoordinator(hass, entry, client)
-    with pytest.raises(Exception):   # UpdateFailed
+    with pytest.raises(UpdateFailed):
         await coord._async_update_data()
     assert coord.reading_time(1001) is None
 
 
 async def test_coordinator_raises_auth_failed_when_key_rejected(hass, monkeypatch):
-    from homeassistant.exceptions import ConfigEntryAuthFailed
-
     entry = MagicMock()
-    entry.options = {const.CONF_DEVICES: [{"serial": "AAA111", "device_id": 1001, "name": "Front"}]}
+    entry.options = {
+        const.CONF_DEVICES: [{"serial": "AAA111", "device_id": 1001, "name": "Front"}]
+    }
 
     def _raise(ids, lb):
         raise GeoDropsAuthError("invalid_grant")
@@ -65,16 +91,24 @@ async def test_coordinator_raises_auth_failed_when_key_rejected(hass, monkeypatc
 
 def _two_device_entry():
     entry = MagicMock()
-    entry.options = {const.CONF_DEVICES: [{"serial": "AAA111", "device_id": 1001, "name": "Front"},
-                                          {"serial": "BBB222", "device_id": 1002, "name": "Back"}]}
+    entry.options = {
+        const.CONF_DEVICES: [
+            {"serial": "AAA111", "device_id": 1001, "name": "Front"},
+            {"serial": "BBB222", "device_id": 1002, "name": "Back"},
+        ]
+    }
     return entry
 
 
 async def test_poll_without_a_device_row_keeps_its_last_reading(hass, monkeypatch):
     # GeoDrops' table briefly holds no recent rows twice a day: the query succeeds
     # but returns nothing. That must not wipe the readings the last poll had.
-    polls = iter([{1001: _reading(1001, 42.0), 1002: _reading(1002, 30.0)},
-                  {1002: _reading(1002, 31.0)}])
+    polls = iter(
+        [
+            {1001: _reading(1001, 42.0), 1002: _reading(1002, 30.0)},
+            {1002: _reading(1002, 31.0)},
+        ]
+    )
     client = _client(lambda ids, lb: next(polls))
     coord = GeoDropsCoordinator(hass, _two_device_entry(), client)
     coord.data = await coord._async_update_data()
@@ -82,7 +116,7 @@ async def test_poll_without_a_device_row_keeps_its_last_reading(hass, monkeypatc
     coord.data = await coord._async_update_data()
     assert coord.reading(1001).moisture_pct == 42.0
     assert coord.reading(1002).moisture_pct == 31.0
-    assert coord.reading_time(1001) == first_seen      # not refreshed by the empty poll
+    assert coord.reading_time(1001) == first_seen  # not refreshed by the empty poll
     assert coord.reading_time(1002) > first_seen
 
 
@@ -100,7 +134,9 @@ async def test_removed_device_is_dropped(hass, monkeypatch):
     entry = _two_device_entry()
     coord = GeoDropsCoordinator(hass, entry, client)
     coord.data = await coord._async_update_data()
-    entry.options = {const.CONF_DEVICES: [{"serial": "BBB222", "device_id": 1002, "name": "Back"}]}
+    entry.options = {
+        const.CONF_DEVICES: [{"serial": "BBB222", "device_id": 1002, "name": "Back"}]
+    }
     coord.data = await coord._async_update_data()
     assert coord.reading(1001) is None
     assert coord.reading_time(1001) is None
@@ -118,15 +154,20 @@ async def test_no_probes_skips_the_query(hass, monkeypatch):
 
 
 def _aged_reading(device_id, hours_old):
-    from homeassistant.util import dt as dt_util
-    from datetime import timedelta
-    return DeviceReading(**{**_reading(device_id, 40.0).__dict__,
-                            "read_at": dt_util.utcnow() - timedelta(hours=hours_old)})
+    return DeviceReading(
+        **{
+            **_reading(device_id, 40.0).__dict__,
+            "read_at": dt_util.utcnow() - timedelta(hours=hours_old),
+        }
+    )
 
 
 def _stale_warnings(caplog):
-    return [r for r in caplog.records
-            if r.levelname == "WARNING" and "has not reported" in r.getMessage()]
+    return [
+        r
+        for r in caplog.records
+        if r.levelname == "WARNING" and "has not reported" in r.getMessage()
+    ]
 
 
 async def _poll(coord, monkeypatch, rows):
@@ -141,7 +182,9 @@ async def test_fresh_probe_logs_no_staleness_warning(hass, monkeypatch, caplog):
 
 
 async def test_probe_past_warn_after_is_logged_once(hass, monkeypatch, caplog):
-    coord = GeoDropsCoordinator(hass, _two_device_entry(), MagicMock())   # warn after 6 h
+    coord = GeoDropsCoordinator(
+        hass, _two_device_entry(), MagicMock()
+    )  # warn after 6 h
     await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 7)})
     await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 7.3)})
     (warning,) = _stale_warnings(caplog)
@@ -168,7 +211,9 @@ async def test_recovered_probe_is_logged_and_can_warn_again(hass, monkeypatch, c
     await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 7)})
     caplog.clear()
     await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 0.5)})
-    assert any("reporting again" in r.getMessage() and r.levelname == "INFO"
-               for r in caplog.records)
+    assert any(
+        "reporting again" in r.getMessage() and r.levelname == "INFO"
+        for r in caplog.records
+    )
     await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 8)})
     assert len(_stale_warnings(caplog)) == 1

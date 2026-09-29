@@ -1,4 +1,5 @@
-"""GeoDrops integration setup."""
+"""The GeoDrops integration."""
+
 from __future__ import annotations
 
 from aiogeodrops import GeoDropsClient, GeoDropsCredentialsError
@@ -6,18 +7,22 @@ from aiogeodrops import GeoDropsClient, GeoDropsCredentialsError
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers import device_registry as dr, issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from . import const
 from .const import DeviceConfig
-from .coordinator import GeoDropsConfigEntry, GeoDropsCoordinator, access_denied_issue_id
+from .coordinator import (
+    GeoDropsConfigEntry,
+    GeoDropsCoordinator,
+    access_denied_issue_id,
+)
 
 PLATFORMS = [Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: GeoDropsConfigEntry) -> bool:
+    """Set up GeoDrops from a config entry."""
     try:
         client = GeoDropsClient(
             async_get_clientsession(hass),
@@ -25,10 +30,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: GeoDropsConfigEntry) -> 
             entry.data[const.CONF_CREDENTIALS_JSON],
         )
     except GeoDropsCredentialsError as err:
-        # the stored key can't even be parsed; retrying won't fix it
+        # The stored key can't even be parsed, so retrying won't fix it.
         raise ConfigEntryAuthFailed(
-            translation_domain=const.DOMAIN, translation_key="invalid_credentials",
-            translation_placeholders={"error": str(err)}) from err
+            translation_domain=const.DOMAIN,
+            translation_key="invalid_credentials",
+            translation_placeholders={"error": str(err)},
+        ) from err
 
     coordinator = GeoDropsCoordinator(hass, entry, client)
     await coordinator.async_config_entry_first_refresh()
@@ -42,10 +49,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: GeoDropsConfigEntry) -> 
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: GeoDropsConfigEntry) -> bool:
+    """Unload a config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: GeoDropsConfigEntry) -> None:
+    """Clear the entry's repair issue when the entry is deleted."""
     ir.async_delete_issue(hass, const.DOMAIN, access_denied_issue_id(entry.entry_id))
 
 
@@ -58,10 +67,13 @@ async def async_remove_config_entry_device(
     probe from a quiet one; removal is theirs to decide. Dropping it from the
     options keeps it from coming back on the next reload.
     """
-    serials = {ident for domain, ident in device_entry.identifiers if domain == const.DOMAIN}
+    serials = {
+        ident for domain, ident in device_entry.identifiers if domain == const.DOMAIN
+    }
     devices: list[DeviceConfig] = entry.options.get(const.CONF_DEVICES, [])
     remaining = [d for d in devices if d[const.DEV_SERIAL] not in serials]
     if len(remaining) != len(devices):
         hass.config_entries.async_update_entry(
-            entry, options={**entry.options, const.CONF_DEVICES: remaining})
+            entry, options={**entry.options, const.CONF_DEVICES: remaining}
+        )
     return True

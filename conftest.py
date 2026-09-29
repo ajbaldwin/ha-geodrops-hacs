@@ -1,20 +1,15 @@
-import sys
-from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent))
+from tests.common import FakeGeoDropsClient
 
 pytest_plugins = "pytest_homeassistant_custom_component"
-
-from tests.common import FakeGeoDropsClient  # noqa: E402  (needs the sys.path entry above)
 
 
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations):
     """Let hass.config_entries.flow discover custom_components/geodrops in tests."""
-    yield
 
 
 @pytest.fixture
@@ -28,6 +23,7 @@ def mock_setup_entry():
     or reloads, which would make flow tests depend on setup. The stub still
     sets runtime_data, which the real async_unload_entry's platforms expect
     at hass teardown (after this patch ends)."""
+
     async def _setup(hass, entry):
         entry.runtime_data = MagicMock()
         return True
@@ -39,8 +35,11 @@ def mock_setup_entry():
 @pytest.fixture
 def entity_registry_enabled_by_default():
     """Create disabled-by-default sensors enabled (HA core's fixture of the same name)."""
-    with patch("homeassistant.helpers.entity.Entity.entity_registry_enabled_default",
-               new_callable=PropertyMock, return_value=True):
+    with patch(
+        "homeassistant.helpers.entity.Entity.entity_registry_enabled_default",
+        new_callable=PropertyMock,
+        return_value=True,
+    ):
         yield
 
 
@@ -50,6 +49,8 @@ def fake_geodrops_client():
     FakeGeoDropsClient.created = []
     with (
         patch("custom_components.geodrops.GeoDropsClient", FakeGeoDropsClient),
-        patch("custom_components.geodrops.config_flow.GeoDropsClient", FakeGeoDropsClient),
+        patch(
+            "custom_components.geodrops.config_flow.GeoDropsClient", FakeGeoDropsClient
+        ),
     ):
         yield FakeGeoDropsClient

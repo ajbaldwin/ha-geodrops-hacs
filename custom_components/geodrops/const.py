@@ -1,34 +1,35 @@
 """Constants for the GeoDrops integration."""
+
 from __future__ import annotations
 
 from typing import Final, NotRequired, TypedDict
 
 DOMAIN: Final = "geodrops"
 
-# entry.data keys
-CONF_PROJECT_ID: Final = "project_id"
+# Keys in entry.data.
 CONF_CREDENTIALS_JSON: Final = "credentials_json"
+CONF_PROJECT_ID: Final = "project_id"
 
-# entry.options keys
-CONF_DEVICES: Final = "devices"          # list[DeviceConfig]
-CONF_SCAN_INTERVAL: Final = "scan_interval_minutes"
-CONF_LOOKBACK_HOURS: Final = "lookback_hours"
-CONF_WARN_HOURS: Final = "staleness_warn_hours"
-CONF_SKIP_HOURS: Final = "staleness_skip_hours"
+# Keys in entry.options.
+CONF_DEVICES: Final = "devices"  # A list of DeviceConfig.
 CONF_EXPIRE_MINUTES: Final = "expire_after_minutes"
+CONF_LOOKBACK_HOURS: Final = "lookback_hours"
+CONF_SCAN_INTERVAL: Final = "scan_interval_minutes"
+CONF_SKIP_HOURS: Final = "staleness_skip_hours"
+CONF_WARN_HOURS: Final = "staleness_warn_hours"
 
-# per-device dict keys
-DEV_SERIAL: Final = "serial"
+# Keys in each DeviceConfig.
+DEV_AREA: Final = "area_id"  # Optional: the HA area chosen when the probe was added.
 DEV_ID: Final = "device_id"
 DEV_NAME: Final = "name"
-DEV_AREA: Final = "area_id"   # optional HA area id assigned at add time
+DEV_SERIAL: Final = "serial"
 
-# defaults (from the standalone service)
-DEFAULT_SCAN_INTERVAL: Final = 20
-DEFAULT_LOOKBACK_HOURS: Final = 12
-DEFAULT_WARN_HOURS: Final = 6
-DEFAULT_SKIP_HOURS: Final = 12
+# Defaults, carried over from the standalone service.
 DEFAULT_EXPIRE_MINUTES: Final = 80
+DEFAULT_LOOKBACK_HOURS: Final = 12
+DEFAULT_SCAN_INTERVAL: Final = 20
+DEFAULT_SKIP_HOURS: Final = 12
+DEFAULT_WARN_HOURS: Final = 6
 
 
 class DeviceConfig(TypedDict):
