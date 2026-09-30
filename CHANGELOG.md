@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0-beta.7 — Probes no longer blanked by a bad sync delay
+- **A probe stays available when GeoDrops reports an impossible sync delay.** On 2026-09-30, GeoDrops' data gave one probe a sync delay of about 2,053 hours (85 days) on readings only an hour old, while the probe kept reporting every 30 minutes. GeoDrops took that at face value and marked all of the probe's sensors unavailable for 6 hours. A sync delay more than 3 hours longer than the reading's own age is now treated as bad data: the probe's age is judged from when the reading was taken instead, and its sensors stay available.
+- **Sync Delay shows `unknown` for such a value**, instead of a spike of thousands of hours in its history.
+- **Nothing to change on your side.** Poll interval, "Mark unavailable after" and "Expire after" work as before.
+
 ## 0.6.0-beta.6 — A lighter, native BigQuery connection
 - **Smaller install, and no more grpcio warning from GeoDrops.** GeoDrops now reads BigQuery through its own small library, [aiogeodrops](https://github.com/ajbaldwin/aiogeodrops), instead of Google's BigQuery SDK. That removes grpcio, protobuf and the rest of the SDK from what GeoDrops installs, so the "grpcio < 1.83.0 does not support Post-Quantum Cryptography" warning no longer comes from GeoDrops. Polls also run on Home Assistant's own event loop and HTTP connection instead of a worker thread.
 - **Nothing to change on your side.** Sensors, entity IDs, states, options and your stored key are all unchanged. Before this release, readings from the new connection were compared with beta.5 on a live install, and every value matched.
