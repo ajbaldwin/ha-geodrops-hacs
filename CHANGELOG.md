@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.6.0 — Re-authentication, steadier sensors, and a lighter install
+Everything since 0.5.1. If you ran the 0.6.0 betas, the only change since beta.7 is the version number.
+
+**⚠️ Before you update**
+- **Using [GeoDrops Rachio Irrigation](https://github.com/ajbaldwin/ha-geodrops-rachio-irrigation)? Update it to v1.2.0 or later first.** v1.1.0 and earlier can't read the new Moisture State and Quality states below: they treat every zone as low quality and water nothing. Don't roll it back below v1.2.0 after installing this version.
+- **Update automations that check Moisture State or Quality.** These sensors now report stable keys (`moist_plus`, `good`, `training`, …) that the UI still shows as "Moist+", "Good", "Training". Automations and templates comparing against the old text stop matching; the README's "States for automations" table lists every state. An unclassified value is now Home Assistant's own `unknown`.
+- **Some sensors move off auto-generated dashboards.** Battery, Sync Delay, Last Reading and Quality Depth 1–3 are now *Diagnostic* sensors: they're listed under *Diagnostic* on the device page and drop off auto-generated dashboards. Entity ids and history are unchanged; add them to a card by hand if you want them there.
+
+**Fixing a broken key**
+- **Re-authenticate instead of starting over.** If Google stops accepting your service-account key (deleted, revoked, or its service account disabled), GeoDrops asks you to re-authenticate on the Devices & Services page. Paste a new key and your probes and settings stay as they were.
+- **Reconfigure.** Change the GCP project or rotate the key any time from the integration's ⋮ menu → Reconfigure. Leave the key blank to keep the current one.
+- **GCP permission problems show in Repairs.** A missing BigQuery role or a disabled BigQuery API raises an issue under Settings → Repairs, linked to the README's troubleshooting section. It clears on its own after the next successful poll.
+
+**Sensors that stay up, and go down when they should**
+- **No more twice-daily "unavailable" blips.** About twice a day GeoDrops' data briefly comes back empty. Each probe now keeps its last reading through that, and goes unavailable only when its own data hasn't arrived for longer than "Expire after".
+- **"Expire after" defaults to 80 minutes** (was 45), so sensors ride out three missed polls instead of two. A value you saved under Advanced Options is kept.
+- **Google hiccups don't need you.** Outages, rate limits and network drops no longer ask you to re-authenticate; the next poll tries again. Each query gives up after about 60 seconds instead of retrying for up to 40 minutes, so setup fails fast with a clear error during an outage.
+- **Quiet probes are caught.** A probe goes unavailable once its latest reading is older than "Mark unavailable after", even while GeoDrops keeps serving that same old reading. "Warn after" writes one warning to the log, and a note when the probe reports again.
+- **A bad sync delay no longer blanks a probe.** GeoDrops has reported a sync delay of about 2,053 hours on readings only an hour old. A sync delay more than 3 hours longer than the reading's own age is now ignored, and Sync Delay shows `unknown` for it.
+- **Missing values show as unknown, not 0.** A probe that doesn't report a temperature or battery no longer shows 0 °C / 0 %, which could trigger frost or low-battery automations.
+
+**New**
+- **Last Reading sensor** shows when each probe last took a reading, so each probe now has 16 sensors.
+- **Download diagnostics** from the integration's ⋮ menu, for bug reports. The key, the service account's email and your project ids are redacted.
+- **Delete a probe from its device page.** Deleting the device also removes the probe from the integration, so it isn't recreated on the next poll.
+- **Sync Delay starts disabled on probes you add from now on.** Existing probes keep it as it is; enable it from the device page if you want it.
+
+**Smaller and cleaner**
+- **Lighter install, and no grpcio warning from GeoDrops.** GeoDrops reads BigQuery through its own small library, [aiogeodrops](https://github.com/ajbaldwin/aiogeodrops), instead of Google's BigQuery SDK. That removes grpcio, protobuf and the rest of the SDK, along with the "grpcio < 1.83.0 does not support Post-Quantum Cryptography" warning. Polls run on Home Assistant's own event loop instead of a worker thread.
+- **Forms check their values and explain errors.** Every field has help text. The poll interval is at least 5 minutes, "Warn after" can't exceed "Mark unavailable after", and "Expire after" must be longer than the poll interval. Pasting JSON that isn't a key file says so, and an unexpected error leaves the form open so you can try again.
+- **The README is corrected about the key.** It said Home Assistant stores the key encrypted; it doesn't. Config entries are plain text in `/config/.storage` and in backups. The README now says so, and suggests deleting the downloaded key file and setting a daily BigQuery quota.
+- **Docs.** The README gains an Advanced Options reference, automation examples, known limitations, troubleshooting, and removal instructions.
+
 ## 0.6.0-beta.7 — Probes no longer blanked by a bad sync delay
 - **A probe stays available when GeoDrops reports an impossible sync delay.** On 2026-09-30, GeoDrops' data gave one probe a sync delay of about 2,053 hours (85 days) on readings only an hour old, while the probe kept reporting every 30 minutes. GeoDrops took that at face value and marked all of the probe's sensors unavailable for 6 hours. A sync delay more than 3 hours longer than the reading's own age is now treated as bad data: the probe's age is judged from when the reading was taken instead, and its sensors stay available.
 - **Sync Delay shows `unknown` for such a value**, instead of a spike of thousands of hours in its history.

@@ -6,7 +6,7 @@ A self-assessment of the GeoDrops integration against the Home Assistant
 and the [development guidelines](https://developers.home-assistant.io/docs/development_guidelines/),
 with the changes needed to reach Platinum.
 
-Assessed against v0.6.0-beta.3 (commit `8fe1b99`), 2026-09-29.
+Assessed against v0.6.0-beta.3, 2026-09-29.
 
 > The quality scale is only formally awarded to core integrations. For a HACS
 > integration this is a self-assessment, but every rule below is applicable
