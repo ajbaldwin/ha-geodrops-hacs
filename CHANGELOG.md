@@ -4,6 +4,7 @@
 Everything since 0.5.1. If you ran the 0.6.0 betas, the only change since beta.7 is the version number.
 
 **⚠️ Before you update**
+- **Using [GeoDrops Rachio Irrigation](https://github.com/ajbaldwin/ha-geodrops-rachio-irrigation)? Update it to v1.2.0 or later first.** v1.1.0 and earlier can't read the new Moisture State and Quality states below: they treat every zone as low quality and water nothing. Don't roll it back below v1.2.0 after installing this version.
 - **Update automations that check Moisture State or Quality.** These sensors now report stable keys (`moist_plus`, `good`, `training`, …) that the UI still shows as "Moist+", "Good", "Training". Automations and templates comparing against the old text stop matching; the README's "States for automations" table lists every state. An unclassified value is now Home Assistant's own `unknown`.
 - **Some sensors move off auto-generated dashboards.** Battery, Sync Delay, Last Reading and Quality Depth 1–3 are now *Diagnostic* sensors: they're listed under *Diagnostic* on the device page and drop off auto-generated dashboards. Entity ids and history are unchanged; add them to a card by hand if you want them there.
 
