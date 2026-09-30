@@ -63,7 +63,25 @@ def test_data_age_grows_with_the_clock_when_the_row_is_frozen():
 
 def test_data_age_uses_sync_delay_when_it_is_larger():
     now = datetime(2026, 9, 26, 12, 0, tzinfo=UTC)
-    assert t.data_age_hours(_aged(15.0, 2, now), now) == 15.0
+    assert t.data_age_hours(_aged(4.0, 2, now), now) == 4.0
+
+
+def test_data_age_ignores_an_impossible_sync_delay():
+    # GeoDrops served ~2053 h on rows an hour old (2026-09-30); the probe was
+    # reporting every 30 minutes, so its age is the reading's own age
+    now = datetime(2026, 9, 26, 12, 0, tzinfo=UTC)
+    assert t.data_age_hours(_aged(2053.1, 1, now), now) == 1
+
+
+def test_sync_delay_is_none_beyond_the_slack():
+    now = datetime(2026, 9, 26, 12, 0, tzinfo=UTC)
+    slack = t.SYNC_DELAY_SLACK_HOURS
+    assert t.sync_delay_hours(_aged(1.0 + slack, 1, now), now) == 1.0 + slack
+    assert t.sync_delay_hours(_aged(1.1 + slack, 1, now), now) is None
+    # a row stamped slightly in the future (end of its interval) still passes
+    assert t.sync_delay_hours(_aged(1.2, -0.25, now), now) == 1.2
+    # without a timestamp there is nothing to check against
+    assert t.sync_delay_hours(_aged(2053.1, None, now), now) == 2053.1
 
 
 def test_data_age_falls_back_to_whatever_is_known():

@@ -153,6 +153,14 @@ def test_unknown_sync_delay_does_not_make_the_probe_unavailable():
     assert _sensor(coord, "moisture").available is True
 
 
+def test_impossible_sync_delay_is_unknown_and_keeps_the_probe_available():
+    coord = _coord(
+        _with(sync_delay_hours=2053.1, read_at=dt_util.utcnow() - timedelta(hours=1))
+    )
+    assert _sensor(coord, "moisture").available is True
+    assert _sensor(coord, "sync_delay").native_value is None
+
+
 def test_unavailable_when_reading_timestamp_is_older_than_skip():
     # the row's sync delay is frozen at 2 h, but the reading itself is 13 h old
     old = dt_util.utcnow() - timedelta(hours=13)

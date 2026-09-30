@@ -38,6 +38,7 @@ from .transform import (
     data_age_hours,
     moisture_index_to_state,
     qcn_to_state,
+    sync_delay_hours,
 )
 
 # The coordinator does all fetching, so entity updates need no limit.
@@ -141,7 +142,7 @@ SENSOR_DESCRIPTIONS: tuple[GeoDropsSensorEntityDescription, ...] = (
     GeoDropsSensorEntityDescription(
         key="sync_delay",
         translation_key="sync_delay",
-        value_fn=lambda r: r.sync_delay_hours,
+        value_fn=lambda r: sync_delay_hours(r, dt_util.utcnow()),
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.HOURS,
         state_class=SensorStateClass.MEASUREMENT,

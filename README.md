@@ -143,7 +143,7 @@ Saving them reloads the integration.
 | Poll interval (minutes) | 20 | 5–1440 | How often to query BigQuery. Each poll is one query covering every probe. |
 | BigQuery lookback (hours) | 12 | 1–168 | How far back each poll searches for a probe's latest reading. A probe with nothing in this window keeps its last reading until "Expire after". |
 | Warn after (hours) | 6 | 1–168, at most "Mark unavailable after" | Writes one warning to the Home Assistant log when a probe's data gets older than this, and a note when it reports again. |
-| Mark unavailable after (hours) | 12 | 1–168 | Makes a probe's sensors unavailable once its latest reading is older than this. Age is the larger of the probe's sync delay and the time since the reading was taken. |
+| Mark unavailable after (hours) | 12 | 1–168 | Makes a probe's sensors unavailable once its latest reading is older than this. Age is the larger of the probe's sync delay and the time since the reading was taken; a sync delay more than 3 hours longer than the reading's age is bad data and ignored. |
 | Expire after (minutes) | 80 | 5–10080, longer than the poll interval | Also makes a probe's sensors unavailable if its data hasn't come back from a poll for this long, for example during a Google outage. |
 
 ### Rotating the key or changing project
@@ -177,7 +177,7 @@ Each probe becomes one Home Assistant device with 16 sensors:
 | Quality Depth 2 | Reading-quality classification at depth sensor 2 |
 | Quality Depth 3 | Reading-quality classification at depth sensor 3 |
 | Battery | Probe battery level (%) |
-| Sync Delay | Hours since the probe's last successful sync to GeoDrops |
+| Sync Delay | Hours since the probe's last successful sync to GeoDrops (`unknown` when GeoDrops reports an impossible value) |
 | Surface Temperature | Soil surface temperature (°C) |
 | Temperature Depth 1 | Soil temperature (°C) at depth sensor 1 |
 | Temperature Depth 2 | Soil temperature (°C) at depth sensor 2 |
@@ -190,7 +190,9 @@ while a probe is still in its factory training period and hasn't produced a
 calibrated moisture reading yet. Any other value GeoDrops doesn't report
 (for example a missing temperature) shows as `unknown`, never as 0. A probe
 whose latest reading is older than the configured "mark unavailable after"
-threshold (judged by both its sync delay and the reading's own timestamp)
+threshold (judged by both its sync delay and the reading's own timestamp; a sync delay
+more than 3 hours longer than the reading's own age can't be right and is
+ignored)
 goes unavailable entirely. Once a probe's data is older than "warn after", a
 warning is written to the Home Assistant log (once, until it reports again).
 
