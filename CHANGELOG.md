@@ -1,12 +1,16 @@
 # Changelog
 
-## Unreleased
-- **Status** (new diagnostic sensor) shows what a probe needs, from GeoDrops' action codes: OK, Calibrating, Max Moisture Required, Wick Renewal Needed, Hardware Check or Error.
-- **Max Moisture Status**, **Wick Status** and **Hardware Status** (new diagnostic binary sensors, on by default) show Problem when GeoDrops asks you to run the max-moisture test in its app, replace the wick, or check the hardware. Max Moisture Status explains a probe whose moisture stays `unknown`.
-- **Quality** (new diagnostic sensor) is GeoDrops' overall reading quality, alongside Quality Depth 1–3.
-- **Next Action Codes** (diagnostic) is a new sensor that starts disabled. It lists GeoDrops' raw action codes, including ones Status doesn't recognize. Enable it from the device page.
+## 0.7.0-beta.2 — Probe status and maintenance alerts
+**New**
+- **Status** is a new diagnostic sensor that shows what a probe needs, read from GeoDrops' action codes: OK, Calibrating, Max Moisture Required, Wick Renewal Needed, Hardware Check or Error. When a probe has several, it shows the most urgent.
+- **Max Moisture Status**, **Wick Status** and **Hardware Status** are new diagnostic binary sensors, on by default. Each shows Problem when GeoDrops asks you to run the max-moisture (deep water) test in its app, replace the probe's wick, or check its hardware. Max Moisture Status explains a probe whose moisture stays `unknown`: it clears once you run the test.
+- **Quality** is a new diagnostic sensor: GeoDrops' overall reading quality, alongside Quality Depth 1–3.
+- **Next Action Codes** is a new diagnostic sensor that starts disabled. It lists GeoDrops' raw action codes, including ones Status doesn't recognize. Enable it from the device page if you want it.
+
+**Changed**
 - **Battery Problem is now called Battery Status**, so it reads "Battery Status: OK" instead of "Battery Problem: OK". Its entity id and history are unchanged.
-- Requires aiogeodrops 0.3.0.
+
+**Nothing to change on your side.** Each probe now has 25 entities instead of 19; the 6 new ones are listed under *Diagnostic* on the device page. GeoDrops doesn't document its action codes: their meanings come from comparing them with readings across GeoDrops' probes.
 
 ## 0.7.0-beta.1 — Battery health, signal strength, and sturdier queries
 **New**
