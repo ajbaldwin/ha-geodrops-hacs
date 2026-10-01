@@ -147,8 +147,17 @@
   },
   "entity": {
     "binary_sensor": {
-      "battery_problem": {
-        "name": "Battery Problem"
+      "battery_status": {
+        "name": "Battery Status"
+      },
+      "max_moisture_required": {
+        "name": "Max Moisture Status"
+      },
+      "wick_renewal": {
+        "name": "Wick Status"
+      },
+      "hardware_problem": {
+        "name": "Hardware Status"
       }
     },
     "sensor": {
@@ -177,6 +186,32 @@
           "good": "Good",
           "training": "Training"
         }
+      },
+      "qcn": {
+        "name": "Quality",
+        "state": {
+          "bad": "Bad",
+          "poor": "Poor",
+          "good": "Good",
+          "training": "Training"
+        }
+      },
+      "status": {
+        "name": "Status",
+        "state": {
+          "ok": "OK",
+          "calibrating": "Calibrating",
+          "max_moisture_required": "Max Moisture Required",
+          "wick_renewal_needed": "Wick Renewal Needed",
+          "hardware_check": "Hardware Check",
+          "error": "Error"
+        }
+      },
+      "next_action": {
+        "name": "Next Action Codes"
+      },
+      "irrigation_confidence": {
+        "name": "Irrigation Confidence"
       },
       "battery": {
         "name": "Battery"

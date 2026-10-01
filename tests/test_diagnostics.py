@@ -7,6 +7,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.geodrops import const
 from custom_components.geodrops.diagnostics import async_get_config_entry_diagnostics
+from homeassistant.helpers.json import json_dumps
 from tests.common import patch_client
 
 READ_AT = datetime(2026, 9, 29, 6, 0, tzinfo=UTC)
@@ -31,6 +32,7 @@ def _reading():
         qcn_d2=2,
         qcn_d3=2,
         read_at=READ_AT,
+        next_action=frozenset({"DW_M_LOW12", "ATT_DW_NEW"}),
     )
 
 
@@ -83,6 +85,9 @@ async def test_diagnostics_show_each_probes_last_reading(hass):
     assert front["last_seen_in_poll"] is not None
     assert front["reading"]["moisture_pct"] == 42.0
     assert front["reading"]["read_at"] == READ_AT
+    # a frozenset would make Home Assistant's JSON encoder fail
+    assert front["reading"]["next_action"] == ["ATT_DW_NEW", "DW_M_LOW12"]
+    json_dumps(probes)
     # a probe the poll hasn't returned yet
     assert probes["BBB222"] == {
         "device_id": 1002,

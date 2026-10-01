@@ -1,4 +1,4 @@
-"""GeoDrops binary sensors: 1 per probe."""
+"""GeoDrops binary sensors: 4 per probe."""
 
 from __future__ import annotations
 
@@ -19,6 +19,13 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .const import DeviceConfig
 from .coordinator import GeoDropsConfigEntry, GeoDropsCoordinator
 from .entity import GeoDropsEntity
+from .transform import (
+    ERROR_CODES,
+    HARDWARE_CODES,
+    MAX_MOISTURE_CODES,
+    WICK_CODES,
+    has_code,
+)
 
 # The coordinator does all fetching, so entity updates need no limit.
 PARALLEL_UPDATES = 0
@@ -38,8 +45,30 @@ class GeoDropsBinarySensorEntityDescription(BinarySensorEntityDescription):
 BINARY_SENSOR_DESCRIPTIONS: tuple[GeoDropsBinarySensorEntityDescription, ...] = (
     GeoDropsBinarySensorEntityDescription(
         key="battery_poor",
-        translation_key="battery_problem",
+        translation_key="battery_status",
         value_fn=lambda r: r.battery_poor,
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    # From GeoDrops' nextAction codes; see transform.py.
+    GeoDropsBinarySensorEntityDescription(
+        key="max_moisture_required",
+        translation_key="max_moisture_required",
+        value_fn=lambda r: has_code(r.next_action, MAX_MOISTURE_CODES),
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    GeoDropsBinarySensorEntityDescription(
+        key="wick_renewal",
+        translation_key="wick_renewal",
+        value_fn=lambda r: has_code(r.next_action, WICK_CODES),
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    GeoDropsBinarySensorEntityDescription(
+        key="hardware_problem",
+        translation_key="hardware_problem",
+        value_fn=lambda r: has_code(r.next_action, HARDWARE_CODES | ERROR_CODES),
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),

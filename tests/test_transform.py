@@ -38,6 +38,29 @@ def test_qcn_and_moisture_state_maps():
     assert t.moisture_index_to_state(99) is None
 
 
+def test_status_takes_the_most_urgent_code():
+    s = t.next_action_to_status
+    assert s(frozenset()) == "ok"
+    assert s(frozenset({"DW_M_LOW12", "LAX_M_EVA3", "SOMETHING_NEW"})) == "ok"
+    assert s(frozenset({"MEM_T_LRN"})) == "calibrating"
+    assert s(frozenset({"ATT_SS_NEW"})) == "calibrating"
+    assert s(frozenset({"ATT_DW_NEW", "ATT_SS_NEW"})) == "max_moisture_required"
+    assert s(frozenset({"DW_RENEW", "ATT_DW_NEW"})) == "wick_renewal_needed"
+    assert s(frozenset({"CHK_T_HWR", "DW_RENEW"})) == "hardware_check"
+    assert s(frozenset({"ERR_NULL", "CHK_T_HWR"})) == "error"
+    assert s(None) is None  # no nextAction column
+    assert set(t.STATUS_OPTIONS) == {
+        "ok", "calibrating", "max_moisture_required", "wick_renewal_needed",
+        "hardware_check", "error",
+    }  # fmt: skip
+
+
+def test_has_code():
+    assert t.has_code(frozenset({"DW_RENEW"}), t.WICK_CODES) is True
+    assert t.has_code(frozenset(), t.WICK_CODES) is False
+    assert t.has_code(None, t.WICK_CODES) is None
+
+
 def test_classify_staleness_strict_gt():
     assert t.classify_staleness(5, 6, 12) == "ok"
     assert t.classify_staleness(6, 6, 12) == "ok"  # strict >

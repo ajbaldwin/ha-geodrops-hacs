@@ -7,6 +7,7 @@ from aiogeodrops import DeviceReading
 from custom_components.geodrops import const
 from custom_components.geodrops.sensor import SENSOR_DESCRIPTIONS, build_sensors
 from homeassistant.components.sensor import SensorDeviceClass
+from homeassistant.const import EntityCategory
 from homeassistant.helpers import area_registry as ar
 from homeassistant.util import dt as dt_util
 
@@ -45,8 +46,8 @@ def _coord(reading, skip_hours=12, seen=None):
     return c
 
 
-def test_18_sensors_per_device():
-    assert len(SENSOR_DESCRIPTIONS) == 18
+def test_22_sensors_per_device():
+    assert len(SENSOR_DESCRIPTIONS) == 22
 
 
 def test_moisture_value_and_state():
@@ -225,3 +226,45 @@ def test_battery_voltage_and_signal_strength():
     unknown = _coord(replace(_reading(), battery_mv=None, rssi_dbm=None))
     assert _sensor(unknown, "battery_voltage").native_value is None
     assert _sensor(unknown, "signal_strength").native_value is None
+
+
+def test_overall_quality_is_a_diagnostic_enum():
+    sensor = _sensor(_coord(replace(_reading(), qcn=1)), "qcn")
+    assert sensor.native_value == "poor"
+    assert sensor.device_class == SensorDeviceClass.ENUM
+    assert sensor.entity_category is EntityCategory.DIAGNOSTIC
+    assert sensor.entity_registry_enabled_default
+    assert (
+        _sensor(_coord(replace(_reading(), qcn=-1)), "qcn").native_value == "training"
+    )
+
+
+def test_status_from_next_action_codes():
+    reading = replace(_reading(), next_action=frozenset({"ATT_DW_NEW", "DW_M_LOW1"}))
+    sensor = _sensor(_coord(reading), "status")
+    assert sensor.native_value == "max_moisture_required"
+    assert sensor.device_class == SensorDeviceClass.ENUM
+    assert sensor.entity_category is EntityCategory.DIAGNOSTIC
+    assert sensor.entity_registry_enabled_default
+    no_column = _coord(replace(_reading(), next_action=None))
+    assert _sensor(no_column, "status").native_value is None
+
+
+def test_next_action_codes_sensor_lists_the_raw_codes():
+    reading = replace(_reading(), next_action=frozenset({"DW_M_LOW12", "CHK_M_HWR"}))
+    sensor = _sensor(_coord(reading), "next_action")
+    assert sensor.native_value == "CHK_M_HWR, DW_M_LOW12"
+    assert sensor.entity_category is EntityCategory.DIAGNOSTIC
+    assert not sensor.entity_registry_enabled_default
+    none = _coord(replace(_reading(), next_action=frozenset()))
+    assert _sensor(none, "next_action").native_value == "none"
+    no_column = _coord(replace(_reading(), next_action=None))
+    assert _sensor(no_column, "next_action").native_value is None
+
+
+def test_irrigation_confidence():
+    reading = replace(_reading(), irrigation_confidence_pct=85.0)
+    sensor = _sensor(_coord(reading), "irrigation_confidence")
+    assert sensor.native_value == 85.0
+    assert sensor.native_unit_of_measurement == "%"
+    assert not sensor.entity_registry_enabled_default
