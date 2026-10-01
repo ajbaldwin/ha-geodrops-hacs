@@ -18,7 +18,7 @@ from .coordinator import (
     access_denied_issue_id,
 )
 
-PLATFORMS = [Platform.SENSOR]
+PLATFORMS = [Platform.BINARY_SENSOR, Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: GeoDropsConfigEntry) -> bool:

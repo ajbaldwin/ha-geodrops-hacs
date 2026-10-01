@@ -146,6 +146,11 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "battery_problem": {
+        "name": "Battery Problem"
+      }
+    },
     "sensor": {
       "moisture": {
         "name": "Dominant Moisture"
@@ -175,6 +180,12 @@
       },
       "battery": {
         "name": "Battery"
+      },
+      "battery_voltage": {
+        "name": "Battery Voltage"
+      },
+      "signal_strength": {
+        "name": "Signal Strength"
       },
       "sync_delay": {
         "name": "Sync Delay"

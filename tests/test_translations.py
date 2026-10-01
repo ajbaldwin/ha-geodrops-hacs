@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import re
 
+from custom_components.geodrops.binary_sensor import BINARY_SENSOR_DESCRIPTIONS
 from custom_components.geodrops.sensor import SENSOR_DESCRIPTIONS
 
 ROOT = Path(__file__).parent.parent / "custom_components" / "geodrops"
@@ -65,3 +66,11 @@ def test_keys_pass_hassfest_validation():
     for spec in _enum_specs():
         keys += spec.options
     assert [k for k in keys if not KEY.match(k)] == []
+
+
+def test_binary_sensor_translations_match_descriptions():
+    strings = _load("strings.json")["entity"]["binary_sensor"]
+    keys = {d.translation_key for d in BINARY_SENSOR_DESCRIPTIONS}
+    assert set(strings) == keys
+    assert all(strings[k]["name"] for k in keys)
+    assert [k for k in strings if not KEY.match(k)] == []

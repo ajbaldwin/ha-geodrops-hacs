@@ -42,6 +42,9 @@ def _reading(device_id=1001):
         qcn_d1=2,
         qcn_d2=2,
         qcn_d3=2,
+        battery_mv=3010.0,
+        rssi_dbm=-97.0,
+        battery_poor=False,
     )
 
 
@@ -78,7 +81,7 @@ def _reauth_flows(hass):
     ]
 
 
-async def test_setup_creates_16_sensors_then_unloads(hass):
+async def test_setup_creates_19_entities_then_unloads(hass):
     entry = _entry(hass)
     with _patch_client(), _patch_fetch() as fetch:
         assert await hass.config_entries.async_setup(entry.entry_id)
@@ -87,7 +90,7 @@ async def test_setup_creates_16_sensors_then_unloads(hass):
     assert FakeGeoDropsClient.created == [("p", '{"type":"x"}')]
     fetch.assert_awaited_once_with([1001], const.DEFAULT_LOOKBACK_HOURS)
     entities = er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
-    assert len(entities) == 16
+    assert len(entities) == 19
     assert hass.states.get("sensor.front_dominant_moisture").state == "42.0"
 
     assert await hass.config_entries.async_unload(entry.entry_id)
@@ -106,7 +109,7 @@ async def test_entity_ids_names_and_states(hass):
         e.entity_id
         for e in er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
     }
-    assert entity_ids == {
+    assert entity_ids == {"binary_sensor.front_battery_problem"} | {
         f"sensor.front_{s}"
         for s in (
             "dominant_moisture",
@@ -118,6 +121,8 @@ async def test_entity_ids_names_and_states(hass):
             "quality_depth_2",
             "quality_depth_3",
             "battery",
+            "battery_voltage",
+            "signal_strength",
             "sync_delay",
             "surface_temperature",
             "temperature_depth_1",
@@ -244,6 +249,9 @@ async def test_diagnostic_and_disabled_sensors(hass):
     }
     assert diagnostic == {
         "battery",
+        "battery_poor",
+        "battery_voltage",
+        "signal_strength",
         "sync_delay",
         "last_reading",
         "qcn_d1",
@@ -255,8 +263,10 @@ async def test_diagnostic_and_disabled_sensors(hass):
         for k, e in entries.items()
         if e.disabled_by is er.RegistryEntryDisabler.INTEGRATION
     }
-    assert disabled == {"sync_delay"}
+    assert disabled == {"sync_delay", "sun_7d", "battery_voltage", "signal_strength"}
     assert hass.states.get("sensor.front_sync_delay") is None
+    assert hass.states.get("sensor.front_avg_7_day_sun") is None
+    assert hass.states.get("binary_sensor.front_battery_problem").state == "off"
     # other integrations read the quality states, so they must exist
     assert hass.states.get("sensor.front_quality_depth_1").state == "good"
     assert hass.states.get("sensor.front_dominant_moisture").state == "42.0"

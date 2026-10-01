@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import timedelta
 from unittest.mock import MagicMock
 
@@ -29,6 +30,8 @@ def _reading(all_training=False):
         qcn_d1=q,
         qcn_d2=q,
         qcn_d3=q,
+        battery_mv=3010.0,
+        rssi_dbm=-97.0,
     )
 
 
@@ -42,8 +45,8 @@ def _coord(reading, skip_hours=12, seen=None):
     return c
 
 
-def test_16_sensors_per_device():
-    assert len(SENSOR_DESCRIPTIONS) == 16
+def test_18_sensors_per_device():
+    assert len(SENSOR_DESCRIPTIONS) == 18
 
 
 def test_moisture_value_and_state():
@@ -213,3 +216,12 @@ def test_sync_delay_is_a_duration_in_hours():
     assert sensor.device_class == SensorDeviceClass.DURATION
     assert sensor.native_unit_of_measurement == "h"
     assert sensor.native_value == 2.0
+
+
+def test_battery_voltage_and_signal_strength():
+    coord = _coord(_reading())
+    assert _sensor(coord, "battery_voltage").native_value == 3010.0
+    assert _sensor(coord, "signal_strength").native_value == -97.0
+    unknown = _coord(replace(_reading(), battery_mv=None, rssi_dbm=None))
+    assert _sensor(unknown, "battery_voltage").native_value is None
+    assert _sensor(unknown, "signal_strength").native_value is None

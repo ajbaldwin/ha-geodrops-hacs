@@ -1,10 +1,10 @@
-"""GeoDrops sensors: 16 per probe."""
+"""GeoDrops sensors: 18 per probe."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from aiogeodrops import DeviceReading
 
@@ -16,26 +16,23 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import (
     PERCENTAGE,
+    SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
     EntityCategory,
+    UnitOfElectricPotential,
     UnitOfTemperature,
     UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import area_registry as ar
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from . import const
 from .const import DeviceConfig
 from .coordinator import GeoDropsConfigEntry, GeoDropsCoordinator
+from .entity import GeoDropsEntity
 from .transform import (
     MOISTURE_STATE_OPTIONS,
     QCN_OPTIONS,
-    classify_staleness,
-    data_age_hours,
     moisture_index_to_state,
     qcn_to_state,
     sync_delay_hours,
@@ -140,6 +137,30 @@ SENSOR_DESCRIPTIONS: tuple[GeoDropsSensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     GeoDropsSensorEntityDescription(
+        key="battery_voltage",
+        translation_key="battery_voltage",
+        value_fn=lambda r: r.battery_mv,
+        device_class=SensorDeviceClass.VOLTAGE,
+        native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
+        suggested_display_precision=0,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        # Only applies when a probe is first added.
+        entity_registry_enabled_default=False,
+    ),
+    GeoDropsSensorEntityDescription(
+        key="signal_strength",
+        translation_key="signal_strength",
+        value_fn=lambda r: r.rssi_dbm,
+        device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+        native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+        suggested_display_precision=0,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        # Only applies when a probe is first added.
+        entity_registry_enabled_default=False,
+    ),
+    GeoDropsSensorEntityDescription(
         key="sync_delay",
         translation_key="sync_delay",
         value_fn=lambda r: sync_delay_hours(r, dt_util.utcnow()),
@@ -161,6 +182,8 @@ SENSOR_DESCRIPTIONS: tuple[GeoDropsSensorEntityDescription, ...] = (
         value_fn=lambda r: r.sun_7d,
         native_unit_of_measurement=UnitOfTime.HOURS,
         state_class=SensorStateClass.MEASUREMENT,
+        # Only applies when a probe is first added.
+        entity_registry_enabled_default=False,
     ),
     GeoDropsSensorEntityDescription(
         key="last_reading",
@@ -172,62 +195,10 @@ SENSOR_DESCRIPTIONS: tuple[GeoDropsSensorEntityDescription, ...] = (
 )
 
 
-class GeoDropsSensor(CoordinatorEntity[GeoDropsCoordinator], SensorEntity):
+class GeoDropsSensor(GeoDropsEntity, SensorEntity):
     """One value from a probe's latest reading."""
 
-    _attr_has_entity_name = True
     entity_description: GeoDropsSensorEntityDescription
-
-    def __init__(
-        self,
-        coordinator: GeoDropsCoordinator,
-        device: DeviceConfig,
-        description: GeoDropsSensorEntityDescription,
-    ) -> None:
-        """Create the sensor for `description` on `device`'s probe."""
-        super().__init__(coordinator)
-        self.entity_description = description
-        self._device = device
-        serial = device[const.DEV_SERIAL]
-        self._attr_unique_id = f"{serial}_{description.key}"
-        device_info = DeviceInfo(
-            identifiers={(const.DOMAIN, serial)},
-            name=device[const.DEV_NAME],
-            manufacturer="GeoDrops",
-            model="GeoDrops Droplet",
-            serial_number=serial,
-        )
-        area_id = device.get(const.DEV_AREA)
-        if area_id:
-            area = ar.async_get(coordinator.hass).async_get_area(area_id)
-            if area is not None:
-                device_info["suggested_area"] = area.name
-        self._attr_device_info = device_info
-
-    @property
-    def _reading(self) -> DeviceReading | None:
-        """The probe's latest reading."""
-        return self.coordinator.reading(self._device[const.DEV_ID])
-
-    @property
-    def available(self) -> bool:
-        """Return False when the probe's data is missing, too old or expired."""
-        r = self._reading
-        if r is None:
-            return False
-        options = self.coordinator.config_entry.options
-        skip: int = options.get(const.CONF_SKIP_HOURS, const.DEFAULT_SKIP_HOURS)
-        warn: int = options.get(const.CONF_WARN_HOURS, const.DEFAULT_WARN_HOURS)
-        age = data_age_hours(r, dt_util.utcnow())
-        if age is not None and classify_staleness(age, warn, skip) == "skip":
-            return False
-        expire: int = options.get(
-            const.CONF_EXPIRE_MINUTES, const.DEFAULT_EXPIRE_MINUTES
-        )
-        last = self.coordinator.reading_time(self._device[const.DEV_ID])
-        if last is None or dt_util.utcnow() - last > timedelta(minutes=expire):
-            return False
-        return True
 
     @property
     def native_value(self) -> StateType | datetime:
