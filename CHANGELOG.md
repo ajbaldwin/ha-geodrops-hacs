@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.0-beta.4 — Quieter defaults
+**Changed**
+- **Max Moisture Status is now called Max Moisture Calibration.** Its entity id is unchanged.
+- **Battery Status, Wick Status and Hardware Status start disabled** on probes you add from now on. Status already covers wick and hardware problems.
+
+**Fixed**
+- **Adding a probe now searches your lookback setting**, not just the last 12 hours.
+
+Nothing to change on your side.
+
 ## 0.7.0-beta.3 — Last detected watering
 **New**
 - **Last Detected Watering** and **Watering Confidence** sensors: when GeoDrops last detected a watering on the probe, and how confident it was. Both keep their value across restarts.
