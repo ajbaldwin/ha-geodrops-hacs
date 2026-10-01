@@ -1,5 +1,13 @@
 {
   "entity": {
+    "binary_sensor": {
+      "max_moisture_required": {
+        "default": "mdi:water-plus"
+      },
+      "wick_renewal": {
+        "default": "mdi:wrench"
+      }
+    },
     "sensor": {
       "moisture_state": {
         "default": "mdi:help-circle",
@@ -20,6 +28,29 @@
           "bad": "mdi:close-circle",
           "training": "mdi:school"
         }
+      },
+      "qcn": {
+        "default": "mdi:help-circle",
+        "state": {
+          "good": "mdi:check-circle",
+          "poor": "mdi:alert",
+          "bad": "mdi:close-circle",
+          "training": "mdi:school"
+        }
+      },
+      "status": {
+        "default": "mdi:help-circle",
+        "state": {
+          "ok": "mdi:check-circle",
+          "calibrating": "mdi:progress-clock",
+          "max_moisture_required": "mdi:water-plus",
+          "wick_renewal_needed": "mdi:wrench",
+          "hardware_check": "mdi:alert",
+          "error": "mdi:close-circle"
+        }
+      },
+      "next_action": {
+        "default": "mdi:format-list-bulleted"
       },
       "sun_7d": {
         "default": "mdi:white-balance-sunny"

@@ -6,6 +6,8 @@ from dataclasses import asdict
 import json
 from typing import Any
 
+from aiogeodrops import DeviceReading
+
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
@@ -38,6 +40,14 @@ def _identifiers(entry: GeoDropsConfigEntry) -> list[str]:
     return sorted(found, key=len, reverse=True)
 
 
+def _reading_dict(reading: DeviceReading) -> dict[str, Any]:
+    """Return a reading as JSON-ready data (Home Assistant can't encode a frozenset)."""
+    data = asdict(reading)
+    if reading.next_action is not None:
+        data["next_action"] = sorted(reading.next_action)
+    return data
+
+
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: GeoDropsConfigEntry
 ) -> dict[str, Any]:
@@ -56,7 +66,7 @@ async def async_get_config_entry_diagnostics(
         probes[device[const.DEV_SERIAL]] = {
             "device_id": device_id,
             "last_seen_in_poll": seen.isoformat() if seen else None,
-            "reading": asdict(reading) if reading else None,
+            "reading": _reading_dict(reading) if reading else None,
         }
     interval = coordinator.update_interval
     return {

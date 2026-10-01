@@ -1,4 +1,4 @@
-"""GeoDrops sensors: 18 per probe."""
+"""GeoDrops sensors: 21 per probe."""
 
 from __future__ import annotations
 
@@ -33,7 +33,9 @@ from .entity import GeoDropsEntity
 from .transform import (
     MOISTURE_STATE_OPTIONS,
     QCN_OPTIONS,
+    STATUS_OPTIONS,
     moisture_index_to_state,
+    next_action_to_status,
     qcn_to_state,
     sync_delay_hours,
 )
@@ -127,6 +129,35 @@ SENSOR_DESCRIPTIONS: tuple[GeoDropsSensorEntityDescription, ...] = (
     _quality("qcn_d1", lambda r: r.qcn_d1, depth=1),
     _quality("qcn_d2", lambda r: r.qcn_d2, depth=2),
     _quality("qcn_d3", lambda r: r.qcn_d3, depth=3),
+    GeoDropsSensorEntityDescription(
+        key="qcn",
+        translation_key="qcn",
+        value_fn=lambda r: qcn_to_state(r.qcn),
+        device_class=SensorDeviceClass.ENUM,
+        options=QCN_OPTIONS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    GeoDropsSensorEntityDescription(
+        key="status",
+        translation_key="status",
+        value_fn=lambda r: next_action_to_status(r.next_action),
+        device_class=SensorDeviceClass.ENUM,
+        options=STATUS_OPTIONS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    # GeoDrops' raw nextAction codes, including ones Status doesn't map.
+    GeoDropsSensorEntityDescription(
+        key="next_action",
+        translation_key="next_action",
+        value_fn=lambda r: (
+            None
+            if r.next_action is None
+            else ", ".join(sorted(r.next_action)) or "none"
+        ),
+        entity_category=EntityCategory.DIAGNOSTIC,
+        # Only applies when a probe is first added.
+        entity_registry_enabled_default=False,
+    ),
     GeoDropsSensorEntityDescription(
         key="battery",
         translation_key="battery",

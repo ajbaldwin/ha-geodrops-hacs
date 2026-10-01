@@ -74,3 +74,8 @@ def test_binary_sensor_translations_match_descriptions():
     assert set(strings) == keys
     assert all(strings[k]["name"] for k in keys)
     assert [k for k in strings if not KEY.match(k)] == []
+
+
+def test_binary_sensor_icons_only_reference_real_binary_sensors():
+    icons = _load("icons.json")["entity"]["binary_sensor"]
+    assert set(icons) <= {d.translation_key for d in BINARY_SENSOR_DESCRIPTIONS}

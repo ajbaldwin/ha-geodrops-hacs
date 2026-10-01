@@ -30,6 +30,52 @@ _MI_STATE = {
 MOISTURE_STATE_OPTIONS = ["dry", "dry_plus", "moist", "moist_plus", "wet", "wet_plus"]
 
 
+# GeoDrops' nextAction codes, by the Status state they produce. Meanings come
+# from correlating each code with qcn and moisture across GeoDrops' fleet
+# (github.com/theOrakle/geodrops, enrich.py):
+# - ATT_DW_NEW: the app's "Action Required: Learn Max Moisture". Moisture
+#   stays unknown until the max-moisture (deep water) test is run in the app.
+# - ATT_SS_NEW, MEM_T_LRN: new-sensor and temperature learning; qcn is -1.
+# - DW_RENEW: the dry wick needs replacing; data keeps flowing, degraded.
+# - CHK_M_HWR, CHK_T_HWR, NULL_HWR: GeoDrops asks for a hardware check.
+# - ERR_LOSS, ERR_NULL: hardware error.
+# Other codes are notes, not states: DW_M_LOW<depths> (one depth reads lower
+# than expected; fires on wet soil too) and LAX_M_EVA<depths> (evaporation lag).
+MAX_MOISTURE_CODES = frozenset({"ATT_DW_NEW"})
+WICK_CODES = frozenset({"DW_RENEW"})
+HARDWARE_CODES = frozenset({"CHK_M_HWR", "CHK_T_HWR", "NULL_HWR"})
+ERROR_CODES = frozenset({"ERR_LOSS", "ERR_NULL"})
+_CALIBRATING_CODES = frozenset({"ATT_SS_NEW", "MEM_T_LRN"})
+
+# Most urgent first: a probe with several codes shows the first that matches.
+_STATUS_BY_CODES = (
+    ("error", ERROR_CODES),
+    ("hardware_check", HARDWARE_CODES),
+    ("wick_renewal_needed", WICK_CODES),
+    ("max_moisture_required", MAX_MOISTURE_CODES),
+    ("calibrating", _CALIBRATING_CODES),
+)
+STATUS_OPTIONS = [*(state for state, _ in _STATUS_BY_CODES), "ok"]
+
+
+def next_action_to_status(codes: frozenset[str] | None) -> str | None:
+    """Return the Status sensor state for a probe's nextAction codes.
+
+    None (unknown) when GeoDrops' table has no nextAction column.
+    """
+    if codes is None:
+        return None
+    for state, state_codes in _STATUS_BY_CODES:
+        if codes & state_codes:
+            return state
+    return "ok"
+
+
+def has_code(codes: frozenset[str] | None, wanted: frozenset[str]) -> bool | None:
+    """Whether any of `wanted` is among a probe's codes; None if unknown."""
+    return None if codes is None else bool(codes & wanted)
+
+
 def qcn_to_state(value: int) -> str | None:
     """Return the Quality sensor state for a GeoDrops qcn value."""
     return _QCN_STATE.get(value)
