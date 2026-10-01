@@ -28,7 +28,15 @@ def test_every_binary_sensor_is_a_diagnostic_problem():
     for sensor in build_binary_sensors(_coord(_reading()), DEVICE):
         assert sensor.device_class is BinarySensorDeviceClass.PROBLEM
         assert sensor.entity_category is EntityCategory.DIAGNOSTIC
-        assert sensor.entity_registry_enabled_default
+
+
+def test_only_max_moisture_calibration_is_enabled_by_default():
+    enabled = {
+        s.entity_description.key
+        for s in build_binary_sensors(_coord(_reading()), DEVICE)
+        if s.entity_registry_enabled_default
+    }
+    assert enabled == {"max_moisture_required"}
 
 
 def test_battery_status_follows_geodrops_flag():

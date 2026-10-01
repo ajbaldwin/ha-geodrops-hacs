@@ -151,7 +151,7 @@
         "name": "Battery Status"
       },
       "max_moisture_required": {
-        "name": "Max Moisture Status"
+        "name": "Max Moisture Calibration"
       },
       "wick_renewal": {
         "name": "Wick Status"

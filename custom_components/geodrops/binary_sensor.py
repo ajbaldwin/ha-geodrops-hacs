@@ -49,6 +49,8 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[GeoDropsBinarySensorEntityDescription, ...] = 
         value_fn=lambda r: r.battery_poor,
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
+        # Only applies when a probe is first added.
+        entity_registry_enabled_default=False,
     ),
     # From GeoDrops' nextAction codes; see transform.py.
     GeoDropsBinarySensorEntityDescription(
@@ -64,6 +66,8 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[GeoDropsBinarySensorEntityDescription, ...] = 
         value_fn=lambda r: has_code(r.next_action, WICK_CODES),
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
+        # Only applies when a probe is first added; Status covers it.
+        entity_registry_enabled_default=False,
     ),
     GeoDropsBinarySensorEntityDescription(
         key="hardware_problem",
@@ -71,6 +75,8 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[GeoDropsBinarySensorEntityDescription, ...] = 
         value_fn=lambda r: has_code(r.next_action, HARDWARE_CODES | ERROR_CODES),
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
+        # Only applies when a probe is first added; Status covers it.
+        entity_registry_enabled_default=False,
     ),
 )
 

@@ -117,7 +117,7 @@ async def test_entity_ids_names_and_states(hass):
         f"binary_sensor.front_{s}"
         for s in (
             "battery_status",
-            "max_moisture_status",
+            "max_moisture_calibration",
             "wick_status",
             "hardware_status",
         )
@@ -298,11 +298,16 @@ async def test_diagnostic_and_disabled_sensors(hass):
         "battery_voltage",
         "signal_strength",
         "next_action",
+        "battery_poor",
+        "wick_renewal",
+        "hardware_problem",
     }
     assert hass.states.get("sensor.front_sync_delay") is None
+    assert hass.states.get("binary_sensor.front_wick_status") is None
     assert hass.states.get("sensor.front_avg_7_day_sun") is None
-    assert hass.states.get("binary_sensor.front_battery_status").state == "off"
-    assert hass.states.get("binary_sensor.front_max_moisture_status").state == "off"
+    assert (
+        hass.states.get("binary_sensor.front_max_moisture_calibration").state == "off"
+    )
     # other integrations read the quality states, so they must exist
     assert hass.states.get("sensor.front_quality_depth_1").state == "good"
     assert hass.states.get("sensor.front_dominant_moisture").state == "42.0"
