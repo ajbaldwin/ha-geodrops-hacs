@@ -2,7 +2,7 @@
 
 A native Home Assistant integration for [GeoDrops](https://geodrops.io/) soil
 moisture probes. It reads your sensor data straight out of BigQuery and
-exposes each probe as a Home Assistant device with 16 sensors — no MQTT
+exposes each probe as a Home Assistant device with 19 sensors — no MQTT
 bridge, no external service to run, no YAML to hand-edit. Everything is
 configured through the UI.
 
@@ -164,7 +164,7 @@ in GCP.
 
 ## Sensors
 
-Each probe becomes one Home Assistant device with 16 sensors:
+Each probe becomes one Home Assistant device with 19 sensors:
 
 | Sensor | Description |
 | --- | --- |
@@ -177,6 +177,9 @@ Each probe becomes one Home Assistant device with 16 sensors:
 | Quality Depth 2 | Reading-quality classification at depth sensor 2 |
 | Quality Depth 3 | Reading-quality classification at depth sensor 3 |
 | Battery | Probe battery level (%) |
+| Battery Problem | On when GeoDrops flags the battery as poor quality (binary sensor) |
+| Battery Voltage | Battery voltage (mV) |
+| Signal Strength | The probe's radio signal strength (dBm) |
 | Sync Delay | Hours since the probe's last successful sync to GeoDrops (`unknown` when GeoDrops reports an impossible value) |
 | Surface Temperature | Soil surface temperature (°C) |
 | Temperature Depth 1 | Soil temperature (°C) at depth sensor 1 |
@@ -196,10 +199,11 @@ ignored)
 goes unavailable entirely. Once a probe's data is older than "warn after", a
 warning is written to the Home Assistant log (once, until it reports again).
 
-Battery, Sync Delay, Last Reading and Quality Depth 1–3 are **diagnostic**
-sensors: they are listed under *Diagnostic* on the device page and left off
-auto-generated dashboards. Sync Delay is also **disabled by default** on
-newly added probes; enable it from the device page if you want it. The
+Battery, Battery Problem, Battery Voltage, Signal Strength, Sync Delay, Last
+Reading and Quality Depth 1–3 are **diagnostic** sensors: they are listed under *Diagnostic* on the device page and left off
+auto-generated dashboards. Battery Voltage, Signal Strength, Sync Delay and
+Avg. 7-Day Sun are **disabled by default** on newly added probes; enable them from the device page if you want
+them. The
 Quality sensors stay enabled, because automations and other integrations use
 them to decide whether a moisture reading can be trusted.
 

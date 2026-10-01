@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+- **Battery Problem** (new diagnostic binary sensor, on by default) turns on when GeoDrops flags a probe's battery as poor quality.
+- **Battery Voltage** (mV) and **Signal Strength** (dBm), new diagnostic sensors, start disabled. Enable them from the device page.
+- **Survives GeoDrops changing its table.** aiogeodrops 0.2.0 queries only the columns GeoDrops' table still has, so a renamed or dropped column blanks just the sensors that use it instead of every sensor on every probe.
+- **Avg. 7-Day Sun starts disabled on probes you add from now on.** Existing probes keep it as it is; enable it from the device page if you want it.
+
 ## 0.6.0 — Re-authentication, steadier sensors, and a lighter install
 Everything since 0.5.1. If you ran the 0.6.0 betas, the only change since beta.7 is the version number.
 
