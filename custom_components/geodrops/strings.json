@@ -233,6 +233,12 @@
       },
       "last_reading": {
         "name": "Last Reading"
+      },
+      "last_watering": {
+        "name": "Last Detected Watering"
+      },
+      "watering_confidence": {
+        "name": "Watering Confidence"
       }
     }
   }

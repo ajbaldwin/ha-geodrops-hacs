@@ -2,7 +2,7 @@
 
 A native Home Assistant integration for [GeoDrops](https://geodrops.io/) soil
 moisture probes. It reads your sensor data straight out of BigQuery and
-exposes each probe as a Home Assistant device with 25 sensors — no MQTT
+exposes each probe as a Home Assistant device with 27 sensors — no MQTT
 bridge, no external service to run, no YAML to hand-edit. Everything is
 configured through the UI.
 
@@ -164,7 +164,7 @@ in GCP.
 
 ## Sensors
 
-Each probe becomes one Home Assistant device with 25 sensors:
+Each probe becomes one Home Assistant device with 27 sensors:
 
 | Sensor | Description |
 | --- | --- |
@@ -193,6 +193,14 @@ Each probe becomes one Home Assistant device with 25 sensors:
 | Temperature Depth 3 | Soil temperature (°C) at depth sensor 3 |
 | Avg. 7-Day Sun | 7-day trailing average sun exposure (hours) |
 | Last Reading | When the probe took its latest reading (timestamp) |
+| Last Detected Watering | When GeoDrops last detected a watering in the probe's readings (timestamp) |
+| Watering Confidence | GeoDrops' irrigation confidence for that watering (%) |
+
+GeoDrops marks only the odd reading as showing a watering, so Last Detected
+Watering and Watering Confidence keep the last one seen, across restarts and
+while the probe is offline. They show `unknown` until a poll finds one. A
+watering is seen only if it falls within some poll's lookback window, so one
+during a Home Assistant outage longer than the window is missed.
 
 Moisture-related sensors report `unknown` (rather than a misleading value)
 while a probe is still in its factory training period and hasn't produced a
