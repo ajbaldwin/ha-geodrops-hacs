@@ -179,7 +179,7 @@ Each probe becomes one Home Assistant device with 27 sensors:
 | Quality | GeoDrops' overall reading-quality classification |
 | Status | What the probe needs, from GeoDrops' action codes: OK, Calibrating, Max Moisture Required, Wick Renewal Needed, Hardware Check or Error |
 | Next Action Codes | GeoDrops' raw action codes (e.g. `ATT_DW_NEW, DW_M_LOW12`), including ones Status doesn't recognize |
-| Max Moisture Status | Problem when GeoDrops asks you to run the max-moisture (deep water) test in its app; moisture stays `unknown` until you do (binary sensor) |
+| Max Moisture Calibration | Problem when GeoDrops asks you to run the max-moisture (deep water) test in its app; moisture stays `unknown` until you do (binary sensor) |
 | Wick Status | Problem when GeoDrops says the probe's wick needs replacing (binary sensor) |
 | Hardware Status | Problem when GeoDrops asks for a hardware check or reports a hardware error (binary sensor) |
 | Battery | Probe battery level (%) |
@@ -215,9 +215,9 @@ warning is written to the Home Assistant log (once, until it reports again).
 
 Battery, Battery Status, Battery Voltage, Signal Strength, Sync Delay, Last
 Reading, Quality, Quality Depth 1–3, Status, Next Action Codes and the Max
-Moisture, Wick and Hardware Status sensors are **diagnostic** sensors: they are listed under *Diagnostic* on the device page and left off
+Moisture Calibration, Wick Status and Hardware Status sensors are **diagnostic** sensors: they are listed under *Diagnostic* on the device page and left off
 auto-generated dashboards. Battery Voltage, Signal Strength, Sync Delay,
-Avg. 7-Day Sun and Next Action Codes are **disabled by default** on newly added probes; enable them from the device page if you want
+Avg. 7-Day Sun, Next Action Codes, Battery Status, Wick Status and Hardware Status are **disabled by default** on newly added probes; enable them from the device page if you want
 them. The
 Quality sensors stay enabled, because automations and other integrations use
 them to decide whether a moisture reading can be trusted.
