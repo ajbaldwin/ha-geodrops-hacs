@@ -83,7 +83,7 @@ def _reauth_flows(hass):
     ]
 
 
-async def test_setup_creates_25_entities_then_unloads(hass):
+async def test_setup_creates_27_entities_then_unloads(hass):
     entry = _entry(hass)
     with _patch_client(), _patch_fetch() as fetch:
         assert await hass.config_entries.async_setup(entry.entry_id)
@@ -92,7 +92,7 @@ async def test_setup_creates_25_entities_then_unloads(hass):
     assert FakeGeoDropsClient.created == [("p", '{"type":"x"}')]
     fetch.assert_awaited_once_with([1001], const.DEFAULT_LOOKBACK_HOURS)
     entities = er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
-    assert len(entities) == 25
+    assert len(entities) == 27
     assert hass.states.get("sensor.front_dominant_moisture").state == "42.0"
 
     assert await hass.config_entries.async_unload(entry.entry_id)
@@ -145,6 +145,8 @@ async def test_entity_ids_names_and_states(hass):
             "temperature_depth_3",
             "avg_7_day_sun",
             "last_reading",
+            "last_detected_watering",
+            "watering_confidence",
         )
     }
     quality = hass.states.get("sensor.front_quality_depth_2")

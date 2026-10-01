@@ -3,8 +3,9 @@ from pathlib import Path
 import re
 
 from custom_components.geodrops.binary_sensor import BINARY_SENSOR_DESCRIPTIONS
-from custom_components.geodrops.sensor import SENSOR_DESCRIPTIONS
+from custom_components.geodrops.sensor import SENSOR_DESCRIPTIONS, WATERING_DESCRIPTIONS
 
+ALL_SENSORS = (*SENSOR_DESCRIPTIONS, *WATERING_DESCRIPTIONS)
 ROOT = Path(__file__).parent.parent / "custom_components" / "geodrops"
 # hassfest's translation_key_validator: translation keys, state keys and
 # icons.json state keys must all look like this
@@ -30,7 +31,7 @@ def test_en_json_matches_strings_json():
 
 def test_every_sensor_has_a_translated_name_with_its_placeholders():
     strings = _sensor_strings()
-    for spec in SENSOR_DESCRIPTIONS:
+    for spec in ALL_SENSORS:
         name = strings[spec.translation_key]["name"]
         assert set(re.findall(r"{(\w+)}", name)) == set(
             spec.translation_placeholders or {}
@@ -38,7 +39,7 @@ def test_every_sensor_has_a_translated_name_with_its_placeholders():
 
 
 def test_no_unused_sensor_translations():
-    assert set(_sensor_strings()) == {s.translation_key for s in SENSOR_DESCRIPTIONS}
+    assert set(_sensor_strings()) == {s.translation_key for s in ALL_SENSORS}
 
 
 def test_every_enum_state_has_a_label_and_an_icon():
@@ -54,7 +55,7 @@ def test_every_enum_state_has_a_label_and_an_icon():
 
 def test_icons_only_reference_real_sensors():
     icons = _load("icons.json")["entity"]["sensor"]
-    assert set(icons) <= {s.translation_key for s in SENSOR_DESCRIPTIONS}
+    assert set(icons) <= {s.translation_key for s in ALL_SENSORS}
 
 
 def test_keys_pass_hassfest_validation():

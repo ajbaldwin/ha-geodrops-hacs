@@ -1,10 +1,11 @@
-"""GeoDrops sensors: 21 per probe."""
+"""GeoDrops sensors: 23 per probe."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any, Self
 
 from aiogeodrops import DeviceReading
 
@@ -22,8 +23,9 @@ from homeassistant.const import (
     UnitOfTemperature,
     UnitOfTime,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.restore_state import ExtraStoredData, RestoreEntity
 from homeassistant.helpers.typing import StateType
 from homeassistant.util import dt as dt_util
 
@@ -226,6 +228,60 @@ SENSOR_DESCRIPTIONS: tuple[GeoDropsSensorEntityDescription, ...] = (
 )
 
 
+@dataclass
+class Watering(ExtraStoredData):
+    """The last watering GeoDrops detected on a probe."""
+
+    confidence: float  # GeoDrops' irrigation confidence, 0 to 1
+    detected_at: datetime  # when the reading that showed it was taken
+
+    def as_dict(self) -> dict[str, Any]:
+        """Return the watering as restorable state data."""
+        return {
+            "confidence": self.confidence,
+            "detected_at": self.detected_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Self | None:
+        """Read a stored watering; None if the data isn't one."""
+        try:
+            detected_at = dt_util.parse_datetime(data["detected_at"])
+            confidence = float(data["confidence"])
+        except (KeyError, TypeError, ValueError):
+            return None
+        if detected_at is None:
+            return None
+        return cls(confidence, detected_at)
+
+
+@dataclass(frozen=True, kw_only=True)
+class GeoDropsWateringSensorEntityDescription(SensorEntityDescription):
+    """A sensor for the last watering GeoDrops detected on a probe."""
+
+    value_fn: Callable[[Watering], StateType | datetime]
+
+
+# GeoDrops marks only the odd reading as showing a watering, so these hold the
+# last one seen, across restarts, rather than following the latest reading.
+WATERING_DESCRIPTIONS: tuple[GeoDropsWateringSensorEntityDescription, ...] = (
+    GeoDropsWateringSensorEntityDescription(
+        key="last_watering",
+        translation_key="last_watering",
+        value_fn=lambda w: w.detected_at,
+        device_class=SensorDeviceClass.TIMESTAMP,
+    ),
+    GeoDropsWateringSensorEntityDescription(
+        key="watering_confidence",
+        translation_key="watering_confidence",
+        value_fn=lambda w: round(w.confidence * 100, 1),
+        native_unit_of_measurement=PERCENTAGE,
+        suggested_display_precision=0,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+)
+
+
 class GeoDropsSensor(GeoDropsEntity, SensorEntity):
     """One value from a probe's latest reading."""
 
@@ -242,11 +298,69 @@ class GeoDropsSensor(GeoDropsEntity, SensorEntity):
         return self.entity_description.value_fn(r)
 
 
+class GeoDropsWateringSensor(GeoDropsEntity, RestoreEntity, SensorEntity):
+    """One value of the last watering GeoDrops detected on a probe."""
+
+    entity_description: GeoDropsWateringSensorEntityDescription
+    _watering: Watering | None = None
+
+    async def async_added_to_hass(self) -> None:
+        """Restore the last watering, then catch up with the latest poll."""
+        await super().async_added_to_hass()
+        if (data := await self.async_get_last_extra_data()) is not None:
+            self._watering = Watering.from_dict(data.as_dict())
+        self._update_watering()
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._update_watering()
+        super()._handle_coordinator_update()
+
+    def _update_watering(self) -> None:
+        """Take the poll's last watering if it is at least as new as the held one."""
+        r = self._reading
+        if (
+            r is None
+            or r.last_irrigation_at is None
+            or r.last_irrigation_confidence is None
+        ):
+            return
+        held = self._watering
+        if held is None or r.last_irrigation_at >= held.detected_at:
+            self._watering = Watering(
+                r.last_irrigation_confidence, r.last_irrigation_at
+            )
+
+    @property
+    def extra_restore_state_data(self) -> Watering | None:
+        """Keep the last watering across restarts."""
+        return self._watering
+
+    @property
+    def available(self) -> bool:
+        """A watering already seen stays true while the probe is offline."""
+        return self._watering is not None or super().available
+
+    @property
+    def native_value(self) -> StateType | datetime:
+        """Return the value from the last watering seen."""
+        if self._watering is None:
+            return None
+        return self.entity_description.value_fn(self._watering)
+
+
 def build_sensors(
     coordinator: GeoDropsCoordinator, device: DeviceConfig
-) -> list[GeoDropsSensor]:
+) -> list[GeoDropsSensor | GeoDropsWateringSensor]:
     """Create every sensor for one probe."""
-    return [GeoDropsSensor(coordinator, device, desc) for desc in SENSOR_DESCRIPTIONS]
+    sensors: list[GeoDropsSensor | GeoDropsWateringSensor] = [
+        GeoDropsSensor(coordinator, device, desc) for desc in SENSOR_DESCRIPTIONS
+    ]
+    sensors.extend(
+        GeoDropsWateringSensor(coordinator, device, desc)
+        for desc in WATERING_DESCRIPTIONS
+    )
+    return sensors
 
 
 async def async_setup_entry(
@@ -256,7 +370,7 @@ async def async_setup_entry(
 ) -> None:
     """Add the sensors for every configured probe."""
     coordinator = entry.runtime_data
-    entities: list[GeoDropsSensor] = []
+    entities: list[GeoDropsSensor | GeoDropsWateringSensor] = []
     for device in coordinator.devices:
         entities.extend(build_sensors(coordinator, device))
     async_add_entities(entities)

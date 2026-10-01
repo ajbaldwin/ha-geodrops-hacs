@@ -54,6 +54,12 @@
       },
       "sun_7d": {
         "default": "mdi:white-balance-sunny"
+      },
+      "last_watering": {
+        "default": "mdi:sprinkler-variant"
+      },
+      "watering_confidence": {
+        "default": "mdi:water-check"
       }
     }
   }
