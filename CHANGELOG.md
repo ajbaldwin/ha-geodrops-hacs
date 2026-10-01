@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0-beta.3 — Last detected watering
+**New**
+- **Last Detected Watering** and **Watering Confidence** sensors: when GeoDrops last detected a watering on the probe, and how confident it was. Both keep their value across restarts.
+
+Each probe now has 27 entities. Nothing to change on your side.
+
 ## 0.7.0-beta.2 — Probe status and maintenance alerts
 **New**
 - **Status** is a new diagnostic sensor that shows what a probe needs, read from GeoDrops' action codes: OK, Calibrating, Max Moisture Required, Wick Renewal Needed, Hardware Check or Error. When a probe has several, it shows the most urgent.

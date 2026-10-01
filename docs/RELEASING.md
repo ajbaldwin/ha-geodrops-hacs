@@ -48,7 +48,10 @@ CHANGELOG sections:
      verbatim as the GitHub release body, and HACS renders the body as the
      changelog shown to users before they update. Write a short,
      human-readable summary of what changed and why it matters to someone
-     deciding whether to update — never a raw commit log.
+     deciding whether to update — never a raw commit log. Keep it brief:
+     one sentence per change, no implementation details (library versions,
+     how a value is computed), and a single closing line on entity counts
+     or anything users must do.
 
 2. **Merge it**, then publish from an up-to-date `main`:
 
