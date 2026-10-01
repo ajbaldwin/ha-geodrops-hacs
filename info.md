@@ -2,7 +2,7 @@
 
 Native Home Assistant integration for GeoDrops soil moisture probes. Reads
 your probe readings directly from BigQuery — no MQTT bridge, no separate
-sync service — and exposes each probe as a device with 26 sensors
+sync service — and exposes each probe as a device with 25 sensors
 (moisture at 3 depths, temperature at 3 depths + surface, per-depth
 reading quality, probe status and maintenance alerts, battery health, signal strength, sync delay, 7-day sun average, and more).
 

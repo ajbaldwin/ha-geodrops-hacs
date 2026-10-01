@@ -4,7 +4,7 @@
 - **Status** (new diagnostic sensor) shows what a probe needs, from GeoDrops' action codes: OK, Calibrating, Max Moisture Required, Wick Renewal Needed, Hardware Check or Error.
 - **Max Moisture Status**, **Wick Status** and **Hardware Status** (new diagnostic binary sensors, on by default) show Problem when GeoDrops asks you to run the max-moisture test in its app, replace the wick, or check the hardware. Max Moisture Status explains a probe whose moisture stays `unknown`.
 - **Quality** (new diagnostic sensor) is GeoDrops' overall reading quality, alongside Quality Depth 1–3.
-- **Next Action Codes** (diagnostic) and **Irrigation Confidence** (%) are new sensors that start disabled. Enable them from the device page.
+- **Next Action Codes** (diagnostic) is a new sensor that starts disabled. It lists GeoDrops' raw action codes, including ones Status doesn't recognize. Enable it from the device page.
 - **Battery Problem is now called Battery Status**, so it reads "Battery Status: OK" instead of "Battery Problem: OK". Its entity id and history are unchanged.
 - Requires aiogeodrops 0.3.0.
 

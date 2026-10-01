@@ -210,9 +210,6 @@
       "next_action": {
         "name": "Next Action Codes"
       },
-      "irrigation_confidence": {
-        "name": "Irrigation Confidence"
-      },
       "battery": {
         "name": "Battery"
       },

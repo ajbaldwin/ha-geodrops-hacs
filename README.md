@@ -2,7 +2,7 @@
 
 A native Home Assistant integration for [GeoDrops](https://geodrops.io/) soil
 moisture probes. It reads your sensor data straight out of BigQuery and
-exposes each probe as a Home Assistant device with 26 sensors — no MQTT
+exposes each probe as a Home Assistant device with 25 sensors — no MQTT
 bridge, no external service to run, no YAML to hand-edit. Everything is
 configured through the UI.
 
@@ -164,7 +164,7 @@ in GCP.
 
 ## Sensors
 
-Each probe becomes one Home Assistant device with 26 sensors:
+Each probe becomes one Home Assistant device with 25 sensors:
 
 | Sensor | Description |
 | --- | --- |
@@ -182,7 +182,6 @@ Each probe becomes one Home Assistant device with 26 sensors:
 | Max Moisture Status | Problem when GeoDrops asks you to run the max-moisture (deep water) test in its app; moisture stays `unknown` until you do (binary sensor) |
 | Wick Status | Problem when GeoDrops says the probe's wick needs replacing (binary sensor) |
 | Hardware Status | Problem when GeoDrops asks for a hardware check or reports a hardware error (binary sensor) |
-| Irrigation Confidence | GeoDrops' irrigation confidence (%) |
 | Battery | Probe battery level (%) |
 | Battery Status | Problem when GeoDrops flags the battery as poor quality (binary sensor) |
 | Battery Voltage | Battery voltage (mV) |
@@ -210,7 +209,7 @@ Battery, Battery Status, Battery Voltage, Signal Strength, Sync Delay, Last
 Reading, Quality, Quality Depth 1–3, Status, Next Action Codes and the Max
 Moisture, Wick and Hardware Status sensors are **diagnostic** sensors: they are listed under *Diagnostic* on the device page and left off
 auto-generated dashboards. Battery Voltage, Signal Strength, Sync Delay,
-Avg. 7-Day Sun, Next Action Codes and Irrigation Confidence are **disabled by default** on newly added probes; enable them from the device page if you want
+Avg. 7-Day Sun and Next Action Codes are **disabled by default** on newly added probes; enable them from the device page if you want
 them. The
 Quality sensors stay enabled, because automations and other integrations use
 them to decide whether a moisture reading can be trusted.

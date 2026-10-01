@@ -1,4 +1,4 @@
-"""GeoDrops sensors: 22 per probe."""
+"""GeoDrops sensors: 21 per probe."""
 
 from __future__ import annotations
 
@@ -155,16 +155,6 @@ SENSOR_DESCRIPTIONS: tuple[GeoDropsSensorEntityDescription, ...] = (
             else ", ".join(sorted(r.next_action)) or "none"
         ),
         entity_category=EntityCategory.DIAGNOSTIC,
-        # Only applies when a probe is first added.
-        entity_registry_enabled_default=False,
-    ),
-    GeoDropsSensorEntityDescription(
-        key="irrigation_confidence",
-        translation_key="irrigation_confidence",
-        value_fn=lambda r: r.irrigation_confidence_pct,
-        native_unit_of_measurement=PERCENTAGE,
-        suggested_display_precision=0,
-        state_class=SensorStateClass.MEASUREMENT,
         # Only applies when a probe is first added.
         entity_registry_enabled_default=False,
     ),

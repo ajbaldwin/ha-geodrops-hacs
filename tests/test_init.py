@@ -46,7 +46,6 @@ def _reading(device_id=1001):
         rssi_dbm=-97.0,
         battery_poor=False,
         qcn=2,
-        irrigation_confidence_pct=80.0,
         next_action=frozenset({"DW_M_LOW1"}),
     )
 
@@ -84,7 +83,7 @@ def _reauth_flows(hass):
     ]
 
 
-async def test_setup_creates_26_entities_then_unloads(hass):
+async def test_setup_creates_25_entities_then_unloads(hass):
     entry = _entry(hass)
     with _patch_client(), _patch_fetch() as fetch:
         assert await hass.config_entries.async_setup(entry.entry_id)
@@ -93,7 +92,7 @@ async def test_setup_creates_26_entities_then_unloads(hass):
     assert FakeGeoDropsClient.created == [("p", '{"type":"x"}')]
     fetch.assert_awaited_once_with([1001], const.DEFAULT_LOOKBACK_HOURS)
     entities = er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
-    assert len(entities) == 26
+    assert len(entities) == 25
     assert hass.states.get("sensor.front_dominant_moisture").state == "42.0"
 
     assert await hass.config_entries.async_unload(entry.entry_id)
@@ -136,7 +135,6 @@ async def test_entity_ids_names_and_states(hass):
             "quality",
             "status",
             "next_action_codes",
-            "irrigation_confidence",
             "battery",
             "battery_voltage",
             "signal_strength",
@@ -298,7 +296,6 @@ async def test_diagnostic_and_disabled_sensors(hass):
         "battery_voltage",
         "signal_strength",
         "next_action",
-        "irrigation_confidence",
     }
     assert hass.states.get("sensor.front_sync_delay") is None
     assert hass.states.get("sensor.front_avg_7_day_sun") is None

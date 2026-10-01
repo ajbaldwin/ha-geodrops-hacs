@@ -46,8 +46,8 @@ def _coord(reading, skip_hours=12, seen=None):
     return c
 
 
-def test_22_sensors_per_device():
-    assert len(SENSOR_DESCRIPTIONS) == 22
+def test_21_sensors_per_device():
+    assert len(SENSOR_DESCRIPTIONS) == 21
 
 
 def test_moisture_value_and_state():
@@ -260,11 +260,3 @@ def test_next_action_codes_sensor_lists_the_raw_codes():
     assert _sensor(none, "next_action").native_value == "none"
     no_column = _coord(replace(_reading(), next_action=None))
     assert _sensor(no_column, "next_action").native_value is None
-
-
-def test_irrigation_confidence():
-    reading = replace(_reading(), irrigation_confidence_pct=85.0)
-    sensor = _sensor(_coord(reading), "irrigation_confidence")
-    assert sensor.native_value == 85.0
-    assert sensor.native_unit_of_measurement == "%"
-    assert not sensor.entity_registry_enabled_default
