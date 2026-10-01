@@ -108,12 +108,16 @@ async def _validate_credentials(
 
 
 async def _lookup_device_id(
-    hass: HomeAssistant, project_id: str, credentials_json: str, serial: str
+    hass: HomeAssistant,
+    project_id: str,
+    credentials_json: str,
+    serial: str,
+    lookback_hours: int = const.DEFAULT_LOOKBACK_HOURS,
 ) -> int:
     """Find a probe's GeoDrops device id by serial. Raises _FlowError."""
     try:
         reading = await _client(hass, project_id, credentials_json).lookup_serial(
-            serial, const.DEFAULT_LOOKBACK_HOURS
+            serial, lookback_hours
         )
     except GeoDropsCredentialsError as err:
         raise _FlowError("invalid_credentials") from err
@@ -316,6 +320,9 @@ class GeoDropsOptionsFlow(OptionsFlowWithReload):
                         data[const.CONF_PROJECT_ID],
                         data[const.CONF_CREDENTIALS_JSON],
                         serial,
+                        self.config_entry.options.get(
+                            const.CONF_LOOKBACK_HOURS, const.DEFAULT_LOOKBACK_HOURS
+                        ),
                     )
                 except _FlowError as err:
                     errors["base"] = err.key
