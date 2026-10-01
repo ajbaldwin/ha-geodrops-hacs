@@ -1,10 +1,15 @@
 # Changelog
 
-## Unreleased
-- **Battery Problem** (new diagnostic binary sensor, on by default) turns on when GeoDrops flags a probe's battery as poor quality.
-- **Battery Voltage** (mV) and **Signal Strength** (dBm), new diagnostic sensors, start disabled. Enable them from the device page.
-- **Survives GeoDrops changing its table.** aiogeodrops 0.2.0 queries only the columns GeoDrops' table still has, so a renamed or dropped column blanks just the sensors that use it instead of every sensor on every probe.
-- **Avg. 7-Day Sun starts disabled on probes you add from now on.** Existing probes keep it as it is; enable it from the device page if you want it.
+## 0.7.0-beta.1 — Battery health, signal strength, and sturdier queries
+**New**
+- **Battery Problem** is a new diagnostic binary sensor, on by default. It turns on when GeoDrops flags a probe's battery as poor quality, so you can be alerted before the battery dies.
+- **Battery Voltage** (mV) and **Signal Strength** (dBm) are new diagnostic sensors. They start disabled on every probe, including existing ones; enable them from the device page if you want them.
+
+**Changed**
+- **Avg. 7-Day Sun now starts disabled on probes you add from now on.** Existing probes keep it as it is.
+- **A GeoDrops table change no longer takes every sensor down.** GeoDrops has renamed and dropped columns in its data before, and one such change used to make every query fail. Now only the sensors that use a missing column go unknown, and the rest keep working. A warning in the log names the missing columns. This comes from aiogeodrops 0.2.0, which checks which columns GeoDrops' table has before each query; that check scans no data and costs nothing.
+
+**Nothing to change on your side.** Each probe now has 19 entities instead of 16; the 3 new ones are listed under *Diagnostic* on the device page.
 
 ## 0.6.0 — Re-authentication, steadier sensors, and a lighter install
 Everything since 0.5.1. If you ran the 0.6.0 betas, the only change since beta.7 is the version number.
