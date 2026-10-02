@@ -119,9 +119,9 @@ core's configuration runs in CI.
 | docs-troubleshooting | Done | README "Troubleshooting"; the repair issue links to it. |
 | docs-use-cases | Done | README "Use cases". |
 | dynamic-devices | Exempt | GeoDrops' table is public and shared; there is no per-account device list to watch. Probes are user-declared by serial. |
-| entity-category | Done | Battery, Battery Status, Battery Voltage, Signal Strength, Sync Delay, Last Reading, Quality, Quality Depth 1–3, Status, Next Action Codes and the Max Moisture, Wick and Hardware Status binary sensors are diagnostic. |
+| entity-category | Done | Battery, Battery Status, Battery Voltage, Signal Strength, Sync Delay, Last Reading, Reading Quality, Reading Quality Depth 1–3, Probe Health, Next Action Codes, Watering Confidence and the Max Moisture, Wick and Hardware Status binary sensors are diagnostic. |
 | entity-device-class | Done | Sync Delay is a duration. Avg. 7-Day Sun is hours per day, a rate, so it has none. |
-| entity-disabled-by-default | Done | Battery Voltage, Signal Strength, Sync Delay, Avg. 7-Day Sun and Next Action Codes, for newly added probes. Quality Depth 1–3 stay enabled: irrigation integrations read their states, and a disabled entity has none. |
+| entity-disabled-by-default | Done | Battery Voltage, Signal Strength, Sync Delay, Avg. 7-Day Sun and Next Action Codes, for newly added probes. Reading Quality Depth 1–3 stay enabled: irrigation integrations read their states, and a disabled entity has none. |
 | entity-translations | Done | |
 | exception-translations | Done | `exceptions` in `strings.json`; every raised HA exception uses a translation key. |
 | icon-translations | Done | `icons.json` with state icons. |
@@ -139,11 +139,11 @@ core's configuration runs in CI.
    `syrupy` snapshot.
 2. **Entity metadata** (`sensor.py` `SENSOR_SPECS`).
    - `entity_category=EntityCategory.DIAGNOSTIC`: Battery, Battery Status,
-     Battery Voltage, Signal Strength, Sync Delay, Last Reading, Quality,
-     Quality Depth 1–3, Status, Next Action Codes, Max Moisture Status, Wick
+     Battery Voltage, Signal Strength, Sync Delay, Last Reading, Reading Quality,
+     Reading Quality Depth 1–3, Probe Health, Next Action Codes, Watering Confidence, Max Moisture Status, Wick
      Status, Hardware Status.
    - `entity_registry_enabled_default=False`: Battery Voltage, Signal Strength,
-     Sync Delay, Avg. 7-Day Sun, Next Action Codes. (Quality Depth 1–3
+     Sync Delay, Avg. 7-Day Sun, Next Action Codes. (Reading Quality Depth 1–3
      shipped disabled in 0.6.0-beta.4 and were re-enabled: other integrations
      read their states.)
      This only affects newly added probes; existing entities stay enabled.

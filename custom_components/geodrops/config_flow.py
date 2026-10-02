@@ -38,7 +38,12 @@ _LOGGER = logging.getLogger(__name__)
 # a typo from querying BigQuery back-to-back.
 _SETTINGS: list[tuple[str, int, int, int]] = [
     (const.CONF_SCAN_INTERVAL, const.DEFAULT_SCAN_INTERVAL, 5, 1440),
-    (const.CONF_LOOKBACK_HOURS, const.DEFAULT_LOOKBACK_HOURS, 1, 168),
+    (
+        const.CONF_LOOKBACK_HOURS,
+        const.DEFAULT_LOOKBACK_HOURS,
+        1,
+        const.MAX_LOOKBACK_HOURS,
+    ),
     (const.CONF_WARN_HOURS, const.DEFAULT_WARN_HOURS, 1, 168),
     (const.CONF_SKIP_HOURS, const.DEFAULT_SKIP_HOURS, 1, 168),
     (const.CONF_EXPIRE_MINUTES, const.DEFAULT_EXPIRE_MINUTES, 5, 10080),
@@ -178,9 +183,7 @@ class GeoDropsConfigFlow(ConfigFlow, domain=const.DOMAIN):
         if user_input is not None:
             serial = user_input[const.DEV_SERIAL].strip().upper()
             try:
-                device_id = await _lookup_device_id(
-                    self.hass, self._project_id, self._credentials_json, serial
-                )
+                device_id = await self._lookup_first_device(serial)
             except _FlowError as err:
                 errors["base"] = err.key
             else:
@@ -198,6 +201,28 @@ class GeoDropsConfigFlow(ConfigFlow, domain=const.DOMAIN):
                 )
         return self.async_show_form(
             step_id="add_device", data_schema=_device_schema(), errors=errors
+        )
+
+    async def _lookup_first_device(self, serial: str) -> int:
+        """Find the first probe's device id. Raises _FlowError.
+
+        There is no lookback setting yet, so search the default window, then
+        the longest one the options allow. Most probes report within the
+        default, so the wider (costlier) query rarely runs.
+        """
+        try:
+            return await _lookup_device_id(
+                self.hass, self._project_id, self._credentials_json, serial
+            )
+        except _FlowError as err:
+            if err.key != "device_not_found":
+                raise
+        return await _lookup_device_id(
+            self.hass,
+            self._project_id,
+            self._credentials_json,
+            serial,
+            const.MAX_LOOKBACK_HOURS,
         )
 
     async def async_step_reauth(

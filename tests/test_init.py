@@ -103,8 +103,8 @@ async def test_setup_creates_27_entities_then_unloads(hass):
 @pytest.mark.usefixtures("entity_registry_enabled_by_default")
 async def test_entity_ids_names_and_states(hass):
     # translated names must produce the same entity ids as the old hard-coded ones
-    # (except Battery Status, renamed from Battery Problem; existing entities keep
-    # their ids)
+    # (except renamed sensors such as Battery Status, Reading Quality and Probe
+    # Health; existing entities keep their ids)
     entry = _entry(hass)
     with _patch_client(), _patch_fetch():
         await hass.config_entries.async_setup(entry.entry_id)
@@ -129,11 +129,11 @@ async def test_entity_ids_names_and_states(hass):
             "moisture_depth_1",
             "moisture_depth_2",
             "moisture_depth_3",
-            "quality_depth_1",
-            "quality_depth_2",
-            "quality_depth_3",
-            "quality",
-            "status",
+            "reading_quality_depth_1",
+            "reading_quality_depth_2",
+            "reading_quality_depth_3",
+            "reading_quality",
+            "probe_health",
             "next_action_codes",
             "battery",
             "battery_voltage",
@@ -149,8 +149,8 @@ async def test_entity_ids_names_and_states(hass):
             "watering_confidence",
         )
     }
-    quality = hass.states.get("sensor.front_quality_depth_2")
-    assert quality.attributes["friendly_name"] == "Front Quality Depth 2"
+    quality = hass.states.get("sensor.front_reading_quality_depth_2")
+    assert quality.attributes["friendly_name"] == "Front Reading Quality Depth 2"
     assert quality.state == "good"
     assert quality.attributes["options"] == ["bad", "poor", "good", "training"]
     assert hass.states.get("sensor.front_moisture_state").state == "moist"
@@ -158,9 +158,9 @@ async def test_entity_ids_names_and_states(hass):
         hass.states.get("sensor.front_avg_7_day_sun").attributes["friendly_name"]
         == "Front Avg. 7-Day Sun"
     )
-    assert hass.states.get("sensor.front_status").state == "ok"
+    assert hass.states.get("sensor.front_probe_health").state == "ok"
     assert hass.states.get("sensor.front_next_action_codes").state == "DW_M_LOW1"
-    assert hass.states.get("sensor.front_quality").state == "good"
+    assert hass.states.get("sensor.front_reading_quality").state == "good"
     battery = hass.states.get("binary_sensor.front_battery_status")
     assert battery.attributes["friendly_name"] == "Front Battery Status"
     assert battery.state == "off"
@@ -286,6 +286,7 @@ async def test_diagnostic_and_disabled_sensors(hass):
         "max_moisture_required",
         "wick_renewal",
         "hardware_problem",
+        "watering_confidence",
     }
     disabled = {
         k
@@ -309,7 +310,7 @@ async def test_diagnostic_and_disabled_sensors(hass):
         hass.states.get("binary_sensor.front_max_moisture_calibration").state == "off"
     )
     # other integrations read the quality states, so they must exist
-    assert hass.states.get("sensor.front_quality_depth_1").state == "good"
+    assert hass.states.get("sensor.front_reading_quality_depth_1").state == "good"
     assert hass.states.get("sensor.front_dominant_moisture").state == "42.0"
 
 

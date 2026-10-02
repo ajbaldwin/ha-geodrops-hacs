@@ -243,6 +243,24 @@ async def test_reconfigure_bad_project_shows_error(hass):
     assert entry.data[const.CONF_PROJECT_ID] == "right-project"
 
 
+async def test_first_probe_search_widens_when_not_found(hass):
+    result = await _at_add_device(hass)
+    with patch_client("lookup_serial", side_effect=[None, _reading()]) as lookup:
+        result = await _submit_probe(hass, result["flow_id"])
+    assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert [c.args for c in lookup.await_args_list] == [
+        ("AAA111", const.DEFAULT_LOOKBACK_HOURS),
+        ("AAA111", const.MAX_LOOKBACK_HOURS),
+    ]
+
+
+async def test_first_probe_found_in_the_default_window_queries_once(hass):
+    result = await _at_add_device(hass)
+    with _known_probe() as lookup:
+        await _submit_probe(hass, result["flow_id"])
+    lookup.assert_awaited_once_with("AAA111", const.DEFAULT_LOOKBACK_HOURS)
+
+
 async def _at_add_device(hass, project="p"):
     result = await _submit_key(hass, (await _start(hass))["flow_id"], project=project)
     assert result["step_id"] == "add_device"

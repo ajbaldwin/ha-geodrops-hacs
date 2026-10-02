@@ -53,7 +53,7 @@
     "error": {
       "invalid_credentials": "The service-account JSON could not be parsed.",
       "cannot_connect": "Could not query BigQuery. Check the project id and that the service account has BigQuery Job User.",
-      "device_not_found": "No readings found for that serial in the last 12 hours. Check the serial.",
+      "device_not_found": "No readings found for that serial in the last 7 days. Check the serial.",
       "invalid_auth": "Google rejected this service-account key. It may have been deleted or revoked, or its service account disabled. Create a new JSON key and try again.",
       "unknown": "Unexpected error. Check the Home Assistant log for details."
     },
@@ -113,7 +113,7 @@
     },
     "error": {
       "cannot_connect": "Could not query BigQuery.",
-      "device_not_found": "No readings found for that serial in the last 12 hours.",
+      "device_not_found": "No readings found for that serial within the lookback window (Advanced options).",
       "duplicate_device": "That serial is already configured.",
       "invalid_auth": "Google rejected the stored service-account key. Update it via the integration's Reconfigure option, then try again.",
       "invalid_credentials": "The stored service-account JSON could not be parsed. Paste a new key via the integration's Reconfigure option, then try again.",
@@ -179,7 +179,7 @@
         "name": "Moisture Depth {depth}"
       },
       "qcn_depth": {
-        "name": "Quality Depth {depth}",
+        "name": "Reading Quality Depth {depth}",
         "state": {
           "bad": "Bad",
           "poor": "Poor",
@@ -188,7 +188,7 @@
         }
       },
       "qcn": {
-        "name": "Quality",
+        "name": "Reading Quality",
         "state": {
           "bad": "Bad",
           "poor": "Poor",
@@ -197,7 +197,7 @@
         }
       },
       "status": {
-        "name": "Status",
+        "name": "Probe Health",
         "state": {
           "ok": "OK",
           "calibrating": "Calibrating",

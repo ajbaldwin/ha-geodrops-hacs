@@ -31,6 +31,9 @@ DEFAULT_SCAN_INTERVAL: Final = 20
 DEFAULT_SKIP_HOURS: Final = 12
 DEFAULT_WARN_HOURS: Final = 6
 
+# The longest lookback the options allow.
+MAX_LOOKBACK_HOURS: Final = 168
+
 
 class DeviceConfig(TypedDict):
     """A probe as stored in entry.options[CONF_DEVICES]."""

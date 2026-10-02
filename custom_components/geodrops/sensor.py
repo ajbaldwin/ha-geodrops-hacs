@@ -147,7 +147,7 @@ SENSOR_DESCRIPTIONS: tuple[GeoDropsSensorEntityDescription, ...] = (
         options=STATUS_OPTIONS,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    # GeoDrops' raw nextAction codes, including ones Status doesn't map.
+    # GeoDrops' raw nextAction codes, including ones Probe Health doesn't map.
     GeoDropsSensorEntityDescription(
         key="next_action",
         translation_key="next_action",
@@ -278,6 +278,7 @@ WATERING_DESCRIPTIONS: tuple[GeoDropsWateringSensorEntityDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         suggested_display_precision=0,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )
 
