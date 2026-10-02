@@ -308,17 +308,17 @@ probes, usage stays well within BigQuery's free tier.
   window finds nothing; each probe keeps its last reading.
 - **Probes are added by serial, not discovered.** The table is shared by all
   GeoDrops users, so the integration can't list "your" probes.
-- **Adding a probe only searches the last 12 hours**, whatever the lookback
-  setting. A probe that hasn't reported in that time can't be added until it
-  does.
+- **The first probe is found by searching the last 12 hours.** Probes added
+  later search the configured lookback window. A probe that hasn't reported
+  in that time can't be added until it does.
 - **Moisture reads `unknown` during a new probe's training period**, until
   GeoDrops has calibrated it.
 
 ## Troubleshooting
 
 **"No readings found for that serial"** when adding a probe. Check the
-serial against the GeoDrops app, and that the probe has reported in the last
-12 hours.
+serial against the GeoDrops app, and that the probe has reported within the
+lookback window (12 hours by default; the first probe always uses 12).
 
 **"Could not query BigQuery"** during setup, or a **"GeoDrops can't query
 BigQuery"** repair (Settings → System → Repairs). Google refused the query.

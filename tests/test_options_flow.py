@@ -267,6 +267,16 @@ async def test_add_device_saves_id_and_area(hass):
     }
 
 
+async def test_add_device_searches_the_configured_lookback(hass):
+    options = {**_entry().options, const.CONF_LOOKBACK_HOURS: 72}
+    _, result = await _open(hass, "add_device", options=options)
+    with patch_client("lookup_serial", return_value=_reading()) as lookup:
+        await hass.config_entries.options.async_configure(
+            result["flow_id"], {const.DEV_SERIAL: "BBB222", const.DEV_NAME: "Back"}
+        )
+    lookup.assert_awaited_once_with("BBB222", 72)
+
+
 async def test_remove_with_no_probes_aborts(hass):
     _, result = await _open(hass, "remove_device", options={const.CONF_DEVICES: []})
     assert result["type"] == FlowResultType.ABORT
