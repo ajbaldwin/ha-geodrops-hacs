@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.0-beta.5 — Clearer names
+**Changed**
+- **Quality is now called Reading Quality** (including Depth 1–3), and **Status is now called Probe Health**. Existing entity ids are unchanged.
+- **Watering Confidence moves to the Diagnostic section** on the device page.
+
+**Fixed**
+- **Setting up the integration now finds a first probe that reported in the last 7 days**, not just the last 12 hours.
+
+Nothing to change on your side.
+
 ## 0.7.0-beta.4 — Quieter defaults
 **Changed**
 - **Max Moisture Status is now called Max Moisture Calibration.** Its entity id is unchanged.
