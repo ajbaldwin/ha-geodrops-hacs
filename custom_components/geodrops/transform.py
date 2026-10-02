@@ -30,7 +30,7 @@ _MI_STATE = {
 MOISTURE_STATE_OPTIONS = ["dry", "dry_plus", "moist", "moist_plus", "wet", "wet_plus"]
 
 
-# GeoDrops' nextAction codes, by the Status state they produce. Meanings come
+# GeoDrops' nextAction codes, by the Probe Health state they produce. Meanings come
 # from correlating each code with qcn and moisture across GeoDrops' fleet
 # (github.com/theOrakle/geodrops, enrich.py):
 # - ATT_DW_NEW: the app's "Action Required: Learn Max Moisture". Moisture
@@ -59,7 +59,7 @@ STATUS_OPTIONS = [*(state for state, _ in _STATUS_BY_CODES), "ok"]
 
 
 def next_action_to_status(codes: frozenset[str] | None) -> str | None:
-    """Return the Status sensor state for a probe's nextAction codes.
+    """Return the Probe Health sensor state for a probe's nextAction codes.
 
     None (unknown) when GeoDrops' table has no nextAction column.
     """
@@ -77,7 +77,7 @@ def has_code(codes: frozenset[str] | None, wanted: frozenset[str]) -> bool | Non
 
 
 def qcn_to_state(value: int) -> str | None:
-    """Return the Quality sensor state for a GeoDrops qcn value."""
+    """Return the Reading Quality sensor state for a GeoDrops qcn value."""
     return _QCN_STATE.get(value)
 
 

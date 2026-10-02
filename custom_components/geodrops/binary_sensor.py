@@ -66,7 +66,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[GeoDropsBinarySensorEntityDescription, ...] = 
         value_fn=lambda r: has_code(r.next_action, WICK_CODES),
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
-        # Only applies when a probe is first added; Status covers it.
+        # Only applies when a probe is first added; Probe Health covers it.
         entity_registry_enabled_default=False,
     ),
     GeoDropsBinarySensorEntityDescription(
@@ -75,7 +75,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[GeoDropsBinarySensorEntityDescription, ...] = 
         value_fn=lambda r: has_code(r.next_action, HARDWARE_CODES | ERROR_CODES),
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
-        # Only applies when a probe is first added; Status covers it.
+        # Only applies when a probe is first added; Probe Health covers it.
         entity_registry_enabled_default=False,
     ),
 )
