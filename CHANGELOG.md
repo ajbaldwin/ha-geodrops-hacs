@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.7.0 — Probe health, battery alerts, and watering detection
+Everything since 0.6.0. If you ran the 0.7.0 betas, the only change since beta.5 is that "Warn after" now defaults to 12 hours.
+
+**New**
+- **Probe Health** is a diagnostic sensor that shows what a probe needs, read from GeoDrops' action codes: OK, Calibrating, Max Moisture Required, Wick Renewal Needed, Hardware Check or Error.
+- **Battery Status, Max Moisture Calibration, Wick Status and Hardware Status** are diagnostic binary sensors that show Problem when GeoDrops flags that issue, so you can be alerted before a probe goes quiet. Battery Status, Wick Status and Hardware Status start disabled on probes you add from now on.
+- **Last Detected Watering and Watering Confidence** show when GeoDrops last detected a watering on the probe and how confident it was. Both keep their value across restarts.
+- **Reading Quality** is a diagnostic sensor with GeoDrops' overall reading quality, alongside Reading Quality Depth 1–3.
+- **Battery Voltage and Signal Strength** are diagnostic sensors that start disabled; enable them from the device page if you want them.
+- **Next Action Codes** lists GeoDrops' raw action codes, including ones Probe Health doesn't recognize. It starts disabled.
+
+**Changed**
+- **"Warn after" now defaults to 12 hours** (was 6), so the log warning for a quiet probe comes later. A value you saved is kept.
+- **A GeoDrops table change no longer takes every sensor down.** Only the sensors that use a missing column go unknown, and a log warning names the column.
+- **Avg. 7-Day Sun starts disabled on probes you add from now on.** Existing probes keep it as it is.
+
+**Fixed**
+- **Adding a probe searches your lookback setting**, and setting up the integration finds a first probe that reported in the last 7 days, instead of only the last 12 hours.
+
+Each probe now has 27 entities instead of 16; the new ones are listed under *Diagnostic* on the device page. Entity ids of existing sensors are unchanged, so there is nothing to change on your side.
+
 ## 0.7.0-beta.5 — Clearer names
 **Changed**
 - **Quality is now called Reading Quality** (including Depth 1–3), and **Status is now called Probe Health**. Existing entity ids are unchanged.
