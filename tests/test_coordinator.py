@@ -184,9 +184,9 @@ async def test_fresh_probe_logs_no_staleness_warning(hass, monkeypatch, caplog):
 async def test_probe_past_warn_after_is_logged_once(hass, monkeypatch, caplog):
     coord = GeoDropsCoordinator(
         hass, _two_device_entry(), MagicMock()
-    )  # warn after 6 h
-    await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 7)})
-    await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 7.3)})
+    )  # warn after 12 h
+    await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 13)})
+    await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 13.3)})
     (warning,) = _stale_warnings(caplog)
     assert "Front" in warning.getMessage() and "AAA111" in warning.getMessage()
 
@@ -208,12 +208,12 @@ async def test_warn_after_setting_is_honoured(hass, monkeypatch, caplog):
 
 async def test_recovered_probe_is_logged_and_can_warn_again(hass, monkeypatch, caplog):
     coord = GeoDropsCoordinator(hass, _two_device_entry(), MagicMock())
-    await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 7)})
+    await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 13)})
     caplog.clear()
     await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 0.5)})
     assert any(
         "reporting again" in r.getMessage() and r.levelname == "INFO"
         for r in caplog.records
     )
-    await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 8)})
+    await _poll(coord, monkeypatch, {1001: _aged_reading(1001, 14)})
     assert len(_stale_warnings(caplog)) == 1
