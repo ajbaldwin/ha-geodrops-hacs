@@ -105,7 +105,7 @@
         "data_description": {
           "scan_interval_minutes": "How often to query BigQuery for new readings. Default 20, minimum 5.",
           "lookback_hours": "How far back to search for each probe's latest reading on every poll. Default 12, 1 to 168.",
-          "staleness_warn_hours": "Log a warning once a probe's data is older than this many hours. Default 6, at most \"Mark unavailable after\".",
+          "staleness_warn_hours": "Log a warning once a probe's data is older than this many hours. Default 12, at most \"Mark unavailable after\".",
           "staleness_skip_hours": "Mark a probe's sensors unavailable once its latest reading is older than this many hours. Default 12, 1 to 168.",
           "expire_after_minutes": "Also mark sensors unavailable if a probe's data has not come back from a poll within this many minutes. Must be longer than the poll interval. Default 80."
         }
