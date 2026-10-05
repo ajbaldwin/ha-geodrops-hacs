@@ -73,6 +73,7 @@ async def test_diagnostics_redact_the_key_and_project(hass):
         "last_update_success": True,
         "last_exception": None,
         "update_interval_seconds": 1200.0,
+        "missing_columns": [],
     }
 
 
@@ -148,3 +149,12 @@ async def test_diagnostics_with_an_unparseable_stored_key(hass):
     diag = await async_get_config_entry_diagnostics(hass, entry)
     assert diag["coordinator"]["last_exception"].endswith("in **REDACTED**")
     assert diag["coordinator"]["update_interval_seconds"] is None
+
+
+async def test_diagnostics_list_columns_missing_from_the_table(hass):
+    entry = await _setup(hass)
+    entry.runtime_data.client.missing_columns = frozenset({"qcn", "deviceBattMV"})
+
+    diag = await async_get_config_entry_diagnostics(hass, entry)
+
+    assert diag["coordinator"]["missing_columns"] == ["deviceBattMV", "qcn"]

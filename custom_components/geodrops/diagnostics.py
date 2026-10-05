@@ -78,6 +78,9 @@ async def async_get_config_entry_diagnostics(
             "last_update_success": coordinator.last_update_success,
             "last_exception": last_exception,
             "update_interval_seconds": interval.total_seconds() if interval else None,
+            # Columns GeoDrops' table lacked at the last check: the readings'
+            # fields they feed are None, so their sensors show unknown.
+            "missing_columns": sorted(coordinator.client.missing_columns),
         },
         "probes": probes,
     }

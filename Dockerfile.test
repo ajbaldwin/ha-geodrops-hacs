@@ -1,6 +1,8 @@
 FROM python:3.13
 WORKDIR /app
-COPY requirements-dev.txt .
-RUN pip install --no-cache-dir -r requirements-dev.txt aiogeodrops==0.4.0
+COPY requirements-dev.txt custom_components/geodrops/manifest.json ./
+# aiogeodrops comes from the manifest, so tests run against the version users get.
+RUN pip install --no-cache-dir -r requirements-dev.txt \
+    $(python -c "import json; print(*json.load(open('manifest.json'))['requirements'])")
 COPY . .
 CMD ["python", "-m", "pytest", "-v"]
