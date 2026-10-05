@@ -19,6 +19,7 @@ class FakeGeoDropsClient:
             raise self.init_error
         type(self).created.append((project_id, credentials))
         self.project_id = project_id
+        self.missing_columns = frozenset()
 
     async def validate_access(self):
         return None
