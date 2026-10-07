@@ -98,11 +98,11 @@ def classify_staleness(age_hours: float, warn_hours: int, skip_hours: int) -> St
 def sync_delay_hours(reading: DeviceReading, now: datetime) -> float | None:
     """Return GeoDrops' sync delay, or None when it can't be right.
 
-    A probe's readings reach GeoDrops when it syncs, so its last sync can't be
-    much older than its latest reading. Rows normally carry up to about an
-    hour more delay than their own age, so SYNC_DELAY_SLACK_HOURS allows for
-    that. GeoDrops has served a delay of ~2053 h on rows an hour old, which
-    would otherwise mark a probe that is still reporting unavailable.
+    The sync delay is how long a reading took to reach GeoDrops' cloud after
+    the probe recorded it, so it can't be much longer than the reading's own
+    age. Rows normally carry up to about an hour more delay than their age
+    (`date` can even be later than the upload), so SYNC_DELAY_SLACK_HOURS allows for
+    that. A GeoDrops bug serves delays of thousands of hours on fresh rows.
     """
     delay = reading.sync_delay_hours
     if delay is None or reading.read_at is None:
@@ -114,18 +114,12 @@ def sync_delay_hours(reading: DeviceReading, now: datetime) -> float | None:
 
 
 def data_age_hours(reading: DeviceReading, now: datetime) -> float | None:
-    """Return how old a reading is, in hours.
+    """Return the hours since a reading was taken (its `date`), or None.
 
-    That is the larger of GeoDrops' sync delay and the time since the
-    reading's own timestamp. The sync delay is a number stored in the row, so while GeoDrops keeps
-    serving the same row it stays frozen; the timestamp keeps aging with the
-    clock. An implausible sync delay is ignored (see sync_delay_hours). None
-    when neither is known.
+    GeoDrops' guidance: a latest reading more than 6 hours old means the probe
+    isn't reporting. The sync delay plays no part; it explains a slow upload,
+    not whether one happened, and GeoDrops sometimes serves bogus values.
     """
-    ages: list[float] = []
-    delay = sync_delay_hours(reading, now)
-    if delay is not None:
-        ages.append(delay)
-    if reading.read_at is not None:
-        ages.append((now - reading.read_at).total_seconds() / 3600)
-    return max(ages, default=None)
+    if reading.read_at is None:
+        return None
+    return (now - reading.read_at).total_seconds() / 3600

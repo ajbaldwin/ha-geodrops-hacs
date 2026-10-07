@@ -72,15 +72,21 @@ def test_moisture_unknown_when_all_training():
     assert by_suffix["battery"].native_value == 88  # telemetry still reported
 
 
-def test_unavailable_when_stale_beyond_skip():
+def test_sync_delay_does_not_make_the_probe_unavailable():
+    # a 13 h delay passes the plausibility check on an 11 h-old reading, but
+    # only the reading's own age (11 h, under skip) decides availability
     coord = _coord(_reading())
     coord.reading.return_value = DeviceReading(
-        **{**_reading().__dict__, "sync_delay_hours": 99.0}
+        **{
+            **_reading().__dict__,
+            "sync_delay_hours": 13.0,
+            "read_at": dt_util.utcnow() - timedelta(hours=11),
+        }
     )
     sensors = build_sensors(
         coord, {"serial": "AAA111", "device_id": 1001, "name": "Front"}
     )
-    assert sensors[0].available is False
+    assert sensors[0].available is True
 
 
 def test_unavailable_when_feed_is_stale_even_if_reading_is_fresh():

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.1-beta.1 — Staleness from the reading's own time
+**Changed**
+- **A probe goes unavailable based only on when its latest reading was taken**, as GeoDrops recommends, so a bad Sync Delay value from GeoDrops can no longer push it there early.
+- **Sync Delay is described as GeoDrops defines it**: how long a reading took to reach GeoDrops' cloud after the probe recorded it.
+
 ## 0.7.0 — Probe health, battery alerts, and watering detection
 Everything since 0.6.0. If you ran the 0.7.0 betas, the only change since beta.5 is that "Warn after" now defaults to 12 hours.
 
