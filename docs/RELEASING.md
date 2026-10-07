@@ -38,7 +38,11 @@ CHANGELOG sections:
 
 ## Steps
 
-1. **Open a release PR** (`release: vX.Y.Z`) with two changes:
+1. **Put the release changes in the PR that ships.** There is no separate
+   release PR for a beta: the feature or fix PR you mean to release carries
+   two extra changes. (A stable promotion has no code to ride along with, so it
+   gets a small `release: vX.Y.Z` PR with just these two changes, or you fold
+   them into the next feature PR.)
 
    - **Bump the version** in `custom_components/geodrops/manifest.json`: the
      next beta (`0.6.0-beta.1`, ...) or the stable (`0.6.0`), no leading `v`.
@@ -52,6 +56,10 @@ CHANGELOG sections:
      one sentence per change, no implementation details (library versions,
      how a value is computed), and a single closing line on entity counts
      or anything users must do.
+
+   Only one open PR should carry a bump at a time, because two would conflict
+   on the version line and the top of `CHANGELOG.md`. If a second PR needs to
+   ship too, merge the first, rebase the second, and bump to the next beta.
 
 2. **Merge it**, then publish from an up-to-date `main`:
 
