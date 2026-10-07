@@ -143,7 +143,7 @@ Saving them reloads the integration.
 | Poll interval (minutes) | 20 | 5–1440 | How often to query BigQuery. Each poll is one query covering every probe. |
 | BigQuery lookback (hours) | 12 | 1–168 | How far back each poll searches for a probe's latest reading. A probe with nothing in this window keeps its last reading until "Expire after". |
 | Warn after (hours) | 12 | 1–168, at most "Mark unavailable after" | Writes one warning to the Home Assistant log when a probe's data gets older than this, and a note when it reports again. |
-| Mark unavailable after (hours) | 12 | 1–168 | Makes a probe's sensors unavailable once its latest reading is older than this. Age is the larger of the probe's sync delay and the time since the reading was taken; a sync delay more than 3 hours longer than the reading's age is bad data and ignored. |
+| Mark unavailable after (hours) | 12 | 1–168 | Makes a probe's sensors unavailable once its latest reading is older than this, counted from when the probe took the reading. |
 | Expire after (minutes) | 80 | 5–10080, longer than the poll interval | Also makes a probe's sensors unavailable if its data hasn't come back from a poll for this long, for example during a Google outage. |
 
 ### Rotating the key or changing project
@@ -186,7 +186,7 @@ Each probe becomes one Home Assistant device with 27 sensors:
 | Battery Status | Problem when GeoDrops flags the battery as poor quality (binary sensor) |
 | Battery Voltage | Battery voltage (mV) |
 | Signal Strength | The probe's radio signal strength (dBm) |
-| Sync Delay | Hours since the probe's last successful sync to GeoDrops (`unknown` when GeoDrops reports an impossible value) |
+| Sync Delay | How long the latest reading took to reach GeoDrops' cloud after the probe recorded it (hours; `unknown` when GeoDrops reports an impossible value) |
 | Surface Temperature | Soil surface temperature (°C) |
 | Temperature Depth 1 | Soil temperature (°C) at depth sensor 1 |
 | Temperature Depth 2 | Soil temperature (°C) at depth sensor 2 |
@@ -207,10 +207,7 @@ while a probe is still in its factory training period and hasn't produced a
 calibrated moisture reading yet. Any other value GeoDrops doesn't report
 (for example a missing temperature) shows as `unknown`, never as 0. A probe
 whose latest reading is older than the configured "mark unavailable after"
-threshold (judged by both its sync delay and the reading's own timestamp; a sync delay
-more than 3 hours longer than the reading's own age can't be right and is
-ignored)
-goes unavailable entirely. Once a probe's data is older than "warn after", a
+threshold (counted from when the probe took it) goes unavailable entirely. Once a probe's data is older than "warn after", a
 warning is written to the Home Assistant log (once, until it reports again).
 
 Battery, Battery Status, Battery Voltage, Signal Strength, Sync Delay, Last
@@ -296,10 +293,10 @@ probes, usage stays well within BigQuery's free tier.
 
 ## Known limitations
 
-- **Readings are only as fresh as GeoDrops' upload.** A probe syncs to
-  GeoDrops periodically (see its Sync Delay sensor), and the integration
-  polls every 20 minutes by default, so a value can be hours old. Last
-  Reading shows when it was taken.
+- **Readings are only as fresh as GeoDrops' upload.** A probe uploads its
+  readings in batches, typically every 2–3 hours, GeoDrops processes them
+  hourly, and the integration polls every 20 minutes by default, so a value
+  can be a few hours old. Last Reading shows when it was taken.
 - **Cloud only.** Readings come from GeoDrops' BigQuery table through Google
   Cloud; there is no local API. If Google, GeoDrops or your internet
   connection is down, sensors keep their last value until "Expire after"
@@ -336,8 +333,10 @@ succeeds.
 
 **A probe's sensors are unavailable.** Its latest reading is older than
 "Mark unavailable after", or no reading has come back from a poll for
-"Expire after". Check that the probe is reporting in the GeoDrops app, and
-enable its Sync Delay sensor to see how far behind it is.
+"Expire after". Check that the probe is reporting in the GeoDrops app. To
+see whether Wi-Fi is the cause, enable its Signal Strength sensor and check
+its history: a weak signal (around -80 dBm or lower) before the probe went
+quiet points to Wi-Fi.
 
 **Moisture sensors show `unknown`.** The probe is still in its training
 period, or GeoDrops didn't report that value. Temperatures and battery still

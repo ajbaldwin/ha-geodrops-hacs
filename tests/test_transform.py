@@ -84,15 +84,11 @@ def test_data_age_grows_with_the_clock_when_the_row_is_frozen():
     assert t.data_age_hours(_aged(1.0, 20, now), now) == 20
 
 
-def test_data_age_uses_sync_delay_when_it_is_larger():
+def test_data_age_ignores_the_sync_delay():
+    # a larger plausible delay, and a bogus one (GeoDrops served ~2053 h on
+    # rows an hour old), both leave the age at the reading's own age
     now = datetime(2026, 9, 26, 12, 0, tzinfo=UTC)
-    assert t.data_age_hours(_aged(4.0, 2, now), now) == 4.0
-
-
-def test_data_age_ignores_an_impossible_sync_delay():
-    # GeoDrops served ~2053 h on rows an hour old (2026-09-30); the probe was
-    # reporting every 30 minutes, so its age is the reading's own age
-    now = datetime(2026, 9, 26, 12, 0, tzinfo=UTC)
+    assert t.data_age_hours(_aged(4.0, 2, now), now) == 2
     assert t.data_age_hours(_aged(2053.1, 1, now), now) == 1
 
 
@@ -107,8 +103,7 @@ def test_sync_delay_is_none_beyond_the_slack():
     assert t.sync_delay_hours(_aged(2053.1, None, now), now) == 2053.1
 
 
-def test_data_age_falls_back_to_whatever_is_known():
+def test_data_age_is_unknown_without_a_timestamp():
     now = datetime(2026, 9, 26, 12, 0, tzinfo=UTC)
-    assert t.data_age_hours(_aged(3.0, None, now), now) == 3.0
+    assert t.data_age_hours(_aged(3.0, None, now), now) is None
     assert t.data_age_hours(_aged(None, 4, now), now) == 4
-    assert t.data_age_hours(_aged(None, None, now), now) is None
