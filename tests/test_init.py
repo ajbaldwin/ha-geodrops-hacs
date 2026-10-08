@@ -138,7 +138,7 @@ async def test_entity_ids_names_and_states(hass):
             "battery",
             "battery_voltage",
             "signal_strength",
-            "sync_delay",
+            "cloud_upload_delay",
             "surface_temperature",
             "temperature_depth_1",
             "temperature_depth_2",
@@ -303,7 +303,7 @@ async def test_diagnostic_and_disabled_sensors(hass):
         "wick_renewal",
         "hardware_problem",
     }
-    assert hass.states.get("sensor.front_sync_delay") is None
+    assert hass.states.get("sensor.front_cloud_upload_delay") is None
     assert hass.states.get("binary_sensor.front_wick_status") is None
     assert hass.states.get("sensor.front_avg_7_day_sun") is None
     assert (

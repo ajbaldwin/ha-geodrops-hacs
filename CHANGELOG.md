@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.1-beta.2 — Cloud Upload Delay
+**Changed**
+- **Sync Delay is now called Cloud Upload Delay**, since it shows the upload delay GeoDrops reports, not how old the data is. Existing entity ids are unchanged.
+
 ## 0.7.1-beta.1 — Staleness from the reading's own time
 **Changed**
 - **A probe goes unavailable based only on when its latest reading was taken**, as GeoDrops recommends, so a bad Sync Delay value from GeoDrops can no longer push it there early.

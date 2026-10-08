@@ -84,9 +84,9 @@ coverage. All of this shipped in 0.6.0; see [History](#history).
 | docs-troubleshooting | Done | README "Troubleshooting"; the repair issue links to it. |
 | docs-use-cases | Done | README "Use cases". |
 | dynamic-devices | Exempt | GeoDrops' table is public and shared; there is no per-account device list to watch. Probes are user-declared by serial. |
-| entity-category | Done | Battery, Battery Status, Battery Voltage, Signal Strength, Sync Delay, Last Reading, Reading Quality, Reading Quality Depth 1–3, Probe Health, Next Action Codes, Watering Confidence and the Max Moisture Calibration, Wick Status and Hardware Status binary sensors are diagnostic. |
-| entity-device-class | Done | Sync Delay is a duration. Avg. 7-Day Sun is hours per day, a rate, so it has none. |
-| entity-disabled-by-default | Done | Battery Voltage, Signal Strength, Sync Delay, Avg. 7-Day Sun, Next Action Codes, Battery Status, Wick Status and Hardware Status, for newly added probes. Reading Quality Depth 1–3 stay enabled: irrigation integrations read their states, and a disabled entity has none. |
+| entity-category | Done | Battery, Battery Status, Battery Voltage, Signal Strength, Cloud Upload Delay, Last Reading, Reading Quality, Reading Quality Depth 1–3, Probe Health, Next Action Codes, Watering Confidence and the Max Moisture Calibration, Wick Status and Hardware Status binary sensors are diagnostic. |
+| entity-device-class | Done | Cloud Upload Delay is a duration. Avg. 7-Day Sun is hours per day, a rate, so it has none. |
+| entity-disabled-by-default | Done | Battery Voltage, Signal Strength, Cloud Upload Delay, Avg. 7-Day Sun, Next Action Codes, Battery Status, Wick Status and Hardware Status, for newly added probes. Reading Quality Depth 1–3 stay enabled: irrigation integrations read their states, and a disabled entity has none. |
 | entity-translations | Done | |
 | exception-translations | Done | `exceptions` in `strings.json`; every raised HA exception uses a translation key. |
 | icon-translations | Done | `icons.json` with state icons. |
