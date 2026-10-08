@@ -220,7 +220,7 @@
         "name": "Signal Strength"
       },
       "sync_delay": {
-        "name": "Sync Delay"
+        "name": "Cloud Upload Delay"
       },
       "surface_temperature": {
         "name": "Surface Temperature"

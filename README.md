@@ -186,7 +186,7 @@ Each probe becomes one Home Assistant device with 27 sensors:
 | Battery Status | Problem when GeoDrops flags the battery as poor quality (binary sensor) |
 | Battery Voltage | Battery voltage (mV) |
 | Signal Strength | The probe's radio signal strength (dBm) |
-| Sync Delay | How long the latest reading took to reach GeoDrops' cloud after the probe recorded it (hours; `unknown` when GeoDrops reports an impossible value) |
+| Cloud Upload Delay | The upload delay GeoDrops reports for the latest reading (hours), usually about 1. It isn't how old the data is; Last Reading shows that. `unknown` when GeoDrops reports an impossible value. Formerly Sync Delay. |
 | Surface Temperature | Soil surface temperature (°C) |
 | Temperature Depth 1 | Soil temperature (°C) at depth sensor 1 |
 | Temperature Depth 2 | Soil temperature (°C) at depth sensor 2 |
@@ -210,10 +210,10 @@ whose latest reading is older than the configured "mark unavailable after"
 threshold (counted from when the probe took it) goes unavailable entirely. Once a probe's data is older than "warn after", a
 warning is written to the Home Assistant log (once, until it reports again).
 
-Battery, Battery Status, Battery Voltage, Signal Strength, Sync Delay, Last
+Battery, Battery Status, Battery Voltage, Signal Strength, Cloud Upload Delay, Last
 Reading, Reading Quality, Reading Quality Depth 1–3, Probe Health, Next Action Codes, Watering Confidence and the Max
 Moisture Calibration, Wick Status and Hardware Status sensors are **diagnostic** sensors: they are listed under *Diagnostic* on the device page and left off
-auto-generated dashboards. Battery Voltage, Signal Strength, Sync Delay,
+auto-generated dashboards. Battery Voltage, Signal Strength, Cloud Upload Delay,
 Avg. 7-Day Sun, Next Action Codes, Battery Status, Wick Status and Hardware Status are **disabled by default** on newly added probes; enable them from the device page if you want
 them. The
 Reading Quality sensors stay enabled, because automations and other integrations use
