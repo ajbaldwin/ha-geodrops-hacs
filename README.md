@@ -235,9 +235,18 @@ A value GeoDrops doesn't classify is Home Assistant's own `unknown`.
 
 Probe Health shows the most urgent of a probe's codes, in the order Error, Hardware
 Check, Recalibration Due, Max Moisture Required, Calibrating. Codes it
-doesn't recognize, and GeoDrops' notes such as `DW_M_LOW` (one depth reads
-lower than the others, even in wet soil), leave it at OK; Next Action Codes
-shows them. GeoDrops doesn't document these codes: their meanings come from
+doesn't recognize, and GeoDrops' notes, leave it at OK; Next Action Codes
+shows them. The notes seen so far, where the digits name the depths:
+
+- `DW_M_LOW`: one depth reads lower than the others, even in wet soil.
+- `LAX_M_EVA`: evaporation lag.
+- `CHK_M_LOW`: very low moisture at that depth. Usually the soil is dry and it
+  clears once watered; a brief one just before a hardware error is a GeoDrops
+  glitch.
+- `MEM_DW_BAD`: the max-moisture test didn't take at that depth. If it has to
+  be rerun, GeoDrops also asks for the test, which raises the repair.
+
+ GeoDrops doesn't document these codes: their meanings come from
 comparing them with readings across GeoDrops' probes.
 
 ### Automation examples

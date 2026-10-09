@@ -41,8 +41,15 @@ MOISTURE_STATE_OPTIONS = ["dry", "dry_plus", "moist", "moist_plus", "wet", "wet_
 #   moisture keeps reporting meanwhile, at reduced quality.
 # - CHK_M_HWR, CHK_T_HWR, NULL_HWR: GeoDrops asks for a hardware check.
 # - ERR_LOSS, ERR_NULL: hardware error.
-# Other codes are notes, not states: DW_M_LOW<depths> (one depth reads lower
-# than expected; fires on wet soil too) and LAX_M_EVA<depths> (evaporation lag).
+# Other codes are notes, not states:
+# - DW_M_LOW<depths>: one depth reads lower than expected; fires on wet soil too.
+# - LAX_M_EVA<depths>: evaporation lag.
+# - CHK_M_LOW<depths>: raw moisture very low at those depths. Either dry soil
+#   for days (clears when watered) or a one-reading drop on every depth just
+#   before ERR_LOSS, often on several probes at once (a GeoDrops glitch).
+#   Reinstalling the probe never cleared it, so it isn't a soil-contact check.
+# - MEM_DW_BAD<depths>: the max-moisture test didn't take at those depths. It
+#   lasts about 36 hours, alongside ATT_DW_NEW when the test must be rerun.
 MAX_MOISTURE_CODES = frozenset({"ATT_DW_NEW"})
 RECALIBRATION_CODES = frozenset({"DW_RENEW"})
 HARDWARE_CODES = frozenset({"CHK_M_HWR", "CHK_T_HWR", "NULL_HWR"})
