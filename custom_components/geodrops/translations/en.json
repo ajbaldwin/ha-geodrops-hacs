@@ -143,6 +143,10 @@
     "access_denied": {
       "title": "GeoDrops can't query BigQuery",
       "description": "Google denied the service account access to BigQuery in project {project_id}. Check that the BigQuery API is enabled on the project and that the service account has the BigQuery Job User role. GeoDrops keeps retrying, and this message goes away once a query succeeds.\n\nGoogle's error: {error}"
+    },
+    "max_moisture_required": {
+      "title": "{name} needs its max-moisture calibration",
+      "description": "GeoDrops needs the max-moisture (deep water) test run on probe {name} ({serial}). Until it is, the probe's moisture sensors stay unknown. Open the GeoDrops app, select the probe and follow its \"Learn Max Moisture\" steps. This message goes away once GeoDrops has the calibration, which can take a few hours to show up."
     }
   },
   "entity": {

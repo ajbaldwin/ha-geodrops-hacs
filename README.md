@@ -179,7 +179,7 @@ Each probe becomes one Home Assistant device with 27 sensors:
 | Reading Quality | GeoDrops' overall reading-quality classification |
 | Probe Health | What the probe needs, from GeoDrops' action codes: OK, Calibrating, Max Moisture Required, Wick Renewal Needed, Hardware Check or Error |
 | Next Action Codes | GeoDrops' raw action codes (e.g. `ATT_DW_NEW, DW_M_LOW12`), including ones Probe Health doesn't recognize |
-| Max Moisture Calibration | Problem when GeoDrops asks you to run the max-moisture (deep water) test in its app; moisture stays `unknown` until you do (binary sensor) |
+| Max Moisture Calibration | Problem when GeoDrops asks you to run the max-moisture (deep water) test in its app; moisture stays `unknown` until you do. Also raised as a repair (binary sensor) |
 | Wick Status | Problem when GeoDrops says the probe's wick needs replacing (binary sensor) |
 | Hardware Status | Problem when GeoDrops asks for a hardware check or reports a hardware error (binary sensor) |
 | Battery | Probe battery level (%) |
@@ -327,6 +327,13 @@ Check that:
 
 GeoDrops keeps retrying, and the repair clears itself on the first query that
 succeeds.
+
+**A "needs its max-moisture calibration" repair** (Settings → System →
+Repairs). GeoDrops wants the max-moisture (deep water) test run on that
+probe, and its moisture sensors stay `unknown` until it is. Run the test from
+the probe's "Learn Max Moisture" prompt in the GeoDrops app. The repair
+clears itself once GeoDrops stops asking, which can take a few hours to show
+up.
 
 **GeoDrops asks to re-authenticate.** Google stopped accepting the key. See
 [Rotating the key or changing project](#rotating-the-key-or-changing-project).

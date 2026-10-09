@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 from aiogeodrops import (
     DeviceReading,
     GeoDropsAccessDeniedError,
@@ -359,6 +361,73 @@ async def test_removing_the_entry_removes_its_repair_issue(hass):
     with _patch_client(), _patch_fetch(side_effect=GeoDropsAccessDeniedError("403")):
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
+    assert len(_issues(hass)) == 1
+    await hass.config_entries.async_remove(entry.entry_id)
+    await hass.async_block_till_done()
+    assert _issues(hass) == []
+
+
+def _max_moisture_reading(device_id=1001):
+    return replace(_reading(device_id), next_action=frozenset({"ATT_DW_NEW"}))
+
+
+async def _setup_with(hass, entry, readings):
+    with _patch_client(), _patch_fetch(return_value=readings):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+
+async def _poll(entry, readings):
+    with _patch_fetch(return_value=readings):
+        await entry.runtime_data.async_refresh()
+
+
+async def test_max_moisture_code_raises_a_repair_until_it_clears(hass):
+    entry = _entry(hass)
+    await _setup_with(hass, entry, {1001: _max_moisture_reading()})
+    issue = ir.async_get(hass).async_get_issue(
+        const.DOMAIN, f"max_moisture_{entry.entry_id}_AAA111"
+    )
+    assert issue.translation_key == "max_moisture_required"
+    assert issue.translation_placeholders == {"name": "Front", "serial": "AAA111"}
+    assert issue.severity is ir.IssueSeverity.WARNING
+    assert not issue.is_fixable
+
+    await _poll(entry, {1001: _reading()})
+    assert _issues(hass) == []
+
+
+async def test_max_moisture_repair_survives_a_poll_without_the_probe(hass):
+    entry = _entry(hass)
+    await _setup_with(hass, entry, {1001: _max_moisture_reading()})
+    await _poll(entry, {})  # GeoDrops' table is briefly empty
+    assert len(_issues(hass)) == 1
+    await _poll(entry, {1001: replace(_reading(), next_action=None)})
+    assert len(_issues(hass)) == 1  # no nextAction column: unknown, not fixed
+
+
+async def test_no_repair_without_the_max_moisture_code(hass):
+    entry = _entry(hass)
+    await _setup_with(hass, entry, {1001: _reading()})
+    assert _issues(hass) == []
+
+
+async def test_removed_probe_takes_its_max_moisture_repair(hass):
+    entry = _entry(hass)
+    await _setup_with(hass, entry, {1001: _max_moisture_reading()})
+    assert len(_issues(hass)) == 1
+    with _patch_client(), _patch_fetch(return_value={}):
+        hass.config_entries.async_update_entry(
+            entry, options={**entry.options, const.CONF_DEVICES: []}
+        )
+        await hass.config_entries.async_reload(entry.entry_id)
+        await hass.async_block_till_done()
+    assert _issues(hass) == []
+
+
+async def test_removing_the_entry_removes_its_max_moisture_repairs(hass):
+    entry = _entry(hass)
+    await _setup_with(hass, entry, {1001: _max_moisture_reading()})
     assert len(_issues(hass)) == 1
     await hass.config_entries.async_remove(entry.entry_id)
     await hass.async_block_till_done()

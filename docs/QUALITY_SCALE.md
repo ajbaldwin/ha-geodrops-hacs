@@ -91,7 +91,7 @@ coverage. All of this shipped in 0.6.0; see [History](#history).
 | exception-translations | Done | `exceptions` in `strings.json`; every raised HA exception uses a translation key. |
 | icon-translations | Done | `icons.json` with state icons. |
 | reconfiguration-flow | Done | |
-| repair-issues | Done | A non-transient 403 raises an `access_denied` repair, cleared by the next successful poll or on entry removal. |
+| repair-issues | Done | A non-transient 403 raises an `access_denied` repair, cleared by the next successful poll or on entry removal. A probe whose nextAction has `ATT_DW_NEW` raises a per-probe `max_moisture_required` repair, cleared when the code goes, the probe is removed, or the entry is removed. |
 | stale-devices | Done | Options-flow removal, plus `async_remove_config_entry_device` for the device page. |
 
 ## Platinum

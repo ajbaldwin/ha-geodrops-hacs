@@ -22,7 +22,7 @@ from homeassistant.util import dt as dt_util
 
 from . import const
 from .const import DeviceConfig
-from .transform import classify_staleness, data_age_hours
+from .transform import MAX_MOISTURE_CODES, classify_staleness, data_age_hours, has_code
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,6 +34,20 @@ type GeoDropsConfigEntry = ConfigEntry[GeoDropsCoordinator]
 def access_denied_issue_id(entry_id: str) -> str:
     """Return the id of the entry's "access denied" repair issue."""
     return f"access_denied_{entry_id}"
+
+
+def max_moisture_issue_prefix(entry_id: str) -> str:
+    """Return the prefix of the entry's per-probe "max moisture" repair issues."""
+    return f"max_moisture_{entry_id}_"
+
+
+def delete_entry_issues(hass: HomeAssistant, entry_id: str) -> None:
+    """Remove every repair issue the entry raised."""
+    ir.async_delete_issue(hass, const.DOMAIN, access_denied_issue_id(entry_id))
+    prefix = max_moisture_issue_prefix(entry_id)
+    for domain, issue_id in list(ir.async_get(hass).issues):
+        if domain == const.DOMAIN and issue_id.startswith(prefix):
+            ir.async_delete_issue(hass, const.DOMAIN, issue_id)
 
 
 class GeoDropsCoordinator(DataUpdateCoordinator[dict[int, DeviceReading]]):
@@ -97,6 +111,7 @@ class GeoDropsCoordinator(DataUpdateCoordinator[dict[int, DeviceReading]]):
         if not ids:
             self._seen = {}
             self._clear_access_denied()
+            self._sync_max_moisture_issues({})
             return {}
         try:
             data = await self.client.fetch_latest(ids, self.lookback_hours)
@@ -133,6 +148,7 @@ class GeoDropsCoordinator(DataUpdateCoordinator[dict[int, DeviceReading]]):
                 merged[device_id] = reading
         self._seen = {d: t for d, t in self._seen.items() if d in ids}
         self._log_staleness(merged, now)
+        self._sync_max_moisture_issues(merged)
         return merged
 
     def _raise_access_denied(self, err: GeoDropsAccessDeniedError) -> None:
@@ -156,6 +172,49 @@ class GeoDropsCoordinator(DataUpdateCoordinator[dict[int, DeviceReading]]):
         ir.async_delete_issue(
             self.hass, const.DOMAIN, access_denied_issue_id(self.config_entry.entry_id)
         )
+
+    def _sync_max_moisture_issues(self, readings: dict[int, DeviceReading]) -> None:
+        """Raise a repair for each probe GeoDrops wants max-moisture calibrated.
+
+        Moisture stays unknown until the user runs the test in GeoDrops' app,
+        so it is worth a repair. Each issue clears once the code goes away. A
+        probe with no reading or no nextAction column keeps its issue as is.
+        """
+        prefix = max_moisture_issue_prefix(self.config_entry.entry_id)
+        wanted: set[str] = set()
+        for device in self.devices:
+            issue_id = prefix + device[const.DEV_SERIAL]
+            wanted.add(issue_id)
+            reading = readings.get(device[const.DEV_ID])
+            needed = (
+                None
+                if reading is None
+                else has_code(reading.next_action, MAX_MOISTURE_CODES)
+            )
+            if needed:
+                ir.async_create_issue(
+                    self.hass,
+                    const.DOMAIN,
+                    issue_id,
+                    is_fixable=False,
+                    severity=ir.IssueSeverity.WARNING,
+                    translation_key="max_moisture_required",
+                    translation_placeholders={
+                        "name": device[const.DEV_NAME],
+                        "serial": device[const.DEV_SERIAL],
+                    },
+                    learn_more_url=TROUBLESHOOTING_URL,
+                )
+            elif needed is False:
+                ir.async_delete_issue(self.hass, const.DOMAIN, issue_id)
+        # Probes removed from the options take their issue with them.
+        for domain, issue_id in list(ir.async_get(self.hass).issues):
+            if (
+                domain == const.DOMAIN
+                and issue_id.startswith(prefix)
+                and issue_id not in wanted
+            ):
+                ir.async_delete_issue(self.hass, const.DOMAIN, issue_id)
 
     def _log_staleness(self, readings: dict[int, DeviceReading], now: datetime) -> None:
         """Warn once when a probe's data passes "warn after"; note when it recovers."""

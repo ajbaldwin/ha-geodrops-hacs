@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+**New**
+- **A probe that needs its max-moisture calibration shows in Repairs**, so you hear about it without an automation. It clears on its own once GeoDrops has the calibration.
+
 ## 0.7.1-beta.2 — Cloud Upload Delay
 **Changed**
 - **Sync Delay is now called Cloud Upload Delay**, since it shows the upload delay GeoDrops reports, not how old the data is. Existing entity ids are unchanged.
