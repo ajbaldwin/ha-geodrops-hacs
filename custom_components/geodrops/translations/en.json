@@ -147,6 +147,10 @@
     "max_moisture_required": {
       "title": "{name} needs its max-moisture calibration",
       "description": "GeoDrops needs the max-moisture (deep water) test run on probe {name} ({serial}). Until it is, the probe's moisture sensors stay unknown. Open the GeoDrops app, select the probe and follow its \"Learn Max Moisture\" steps. This message goes away once GeoDrops has the calibration, which can take a few hours to show up."
+    },
+    "max_moisture_recalibration": {
+      "title": "{name}'s max-moisture calibration has expired",
+      "description": "GeoDrops asks for the max-moisture (deep water) test to be run again on probe {name} ({serial}). It does this 75 days after the last one. Moisture keeps reporting meanwhile, but its quality drops. Open the GeoDrops app, select the probe and run the deep water test again. This message goes away once GeoDrops has the new calibration, which can take a few hours to show up."
     }
   },
   "entity": {
@@ -157,11 +161,11 @@
       "max_moisture_required": {
         "name": "Max Moisture Calibration"
       },
-      "wick_renewal": {
-        "name": "Wick Status"
-      },
       "hardware_problem": {
         "name": "Hardware Status"
+      },
+      "max_moisture_recalibration": {
+        "name": "Max Moisture Recalibration"
       }
     },
     "sensor": {
@@ -206,7 +210,7 @@
           "ok": "OK",
           "calibrating": "Calibrating",
           "max_moisture_required": "Max Moisture Required",
-          "wick_renewal_needed": "Wick Renewal Needed",
+          "recalibration_due": "Recalibration Due",
           "hardware_check": "Hardware Check",
           "error": "Error"
         }

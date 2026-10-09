@@ -23,7 +23,7 @@ from .transform import (
     ERROR_CODES,
     HARDWARE_CODES,
     MAX_MOISTURE_CODES,
-    WICK_CODES,
+    RECALIBRATION_CODES,
     has_code,
 )
 
@@ -61,9 +61,10 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[GeoDropsBinarySensorEntityDescription, ...] = 
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     GeoDropsBinarySensorEntityDescription(
+        # The key predates knowing what DW_RENEW means; it keeps the unique id.
         key="wick_renewal",
-        translation_key="wick_renewal",
-        value_fn=lambda r: has_code(r.next_action, WICK_CODES),
+        translation_key="max_moisture_recalibration",
+        value_fn=lambda r: has_code(r.next_action, RECALIBRATION_CODES),
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
         # Only applies when a probe is first added; Probe Health covers it.

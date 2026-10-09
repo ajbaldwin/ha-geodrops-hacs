@@ -45,20 +45,20 @@ def test_status_takes_the_most_urgent_code():
     assert s(frozenset({"MEM_T_LRN"})) == "calibrating"
     assert s(frozenset({"ATT_SS_NEW"})) == "calibrating"
     assert s(frozenset({"ATT_DW_NEW", "ATT_SS_NEW"})) == "max_moisture_required"
-    assert s(frozenset({"DW_RENEW", "ATT_DW_NEW"})) == "wick_renewal_needed"
+    assert s(frozenset({"DW_RENEW", "ATT_DW_NEW"})) == "recalibration_due"
     assert s(frozenset({"CHK_T_HWR", "DW_RENEW"})) == "hardware_check"
     assert s(frozenset({"ERR_NULL", "CHK_T_HWR"})) == "error"
     assert s(None) is None  # no nextAction column
     assert set(t.STATUS_OPTIONS) == {
-        "ok", "calibrating", "max_moisture_required", "wick_renewal_needed",
+        "ok", "calibrating", "max_moisture_required", "recalibration_due",
         "hardware_check", "error",
     }  # fmt: skip
 
 
 def test_has_code():
-    assert t.has_code(frozenset({"DW_RENEW"}), t.WICK_CODES) is True
-    assert t.has_code(frozenset(), t.WICK_CODES) is False
-    assert t.has_code(None, t.WICK_CODES) is None
+    assert t.has_code(frozenset({"DW_RENEW"}), t.RECALIBRATION_CODES) is True
+    assert t.has_code(frozenset(), t.RECALIBRATION_CODES) is False
+    assert t.has_code(None, t.RECALIBRATION_CODES) is None
 
 
 def test_classify_staleness_strict_gt():

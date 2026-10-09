@@ -2,7 +2,11 @@
 
 ## Unreleased
 **New**
-- **A probe that needs its max-moisture calibration shows in Repairs**, so you hear about it without an automation. It clears on its own once GeoDrops has the calibration.
+- **A probe that needs its max-moisture calibration shows in Repairs**, so you hear about it without an automation. This covers a new probe's first test and the retest GeoDrops asks for every 75 days. It clears on its own once GeoDrops has the calibration.
+
+**Changed**
+- **Wick Status is now called Max Moisture Recalibration.** GeoDrops' code means the max-moisture calibration has expired, not that a wick needs replacing. Existing entity ids are unchanged.
+- **Breaking: Probe Health's `wick_renewal_needed` state is now `recalibration_due`** (shown as Recalibration Due). Update any automation that compares against the old state.
 
 ## 0.7.1-beta.2 — Cloud Upload Delay
 **Changed**

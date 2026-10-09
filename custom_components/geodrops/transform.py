@@ -36,13 +36,15 @@ MOISTURE_STATE_OPTIONS = ["dry", "dry_plus", "moist", "moist_plus", "wet", "wet_
 # - ATT_DW_NEW: the app's "Action Required: Learn Max Moisture". Moisture
 #   stays unknown until the max-moisture (deep water) test is run in the app.
 # - ATT_SS_NEW, MEM_T_LRN: new-sensor and temperature learning; qcn is -1.
-# - DW_RENEW: the dry wick needs replacing; data keeps flowing, degraded.
+# - DW_RENEW: the max-moisture calibration has expired and the test should be
+#   run again. It fires 75 days after the last one (dateLastCalibDeepWater);
+#   moisture keeps reporting meanwhile, at reduced quality.
 # - CHK_M_HWR, CHK_T_HWR, NULL_HWR: GeoDrops asks for a hardware check.
 # - ERR_LOSS, ERR_NULL: hardware error.
 # Other codes are notes, not states: DW_M_LOW<depths> (one depth reads lower
 # than expected; fires on wet soil too) and LAX_M_EVA<depths> (evaporation lag).
 MAX_MOISTURE_CODES = frozenset({"ATT_DW_NEW"})
-WICK_CODES = frozenset({"DW_RENEW"})
+RECALIBRATION_CODES = frozenset({"DW_RENEW"})
 HARDWARE_CODES = frozenset({"CHK_M_HWR", "CHK_T_HWR", "NULL_HWR"})
 ERROR_CODES = frozenset({"ERR_LOSS", "ERR_NULL"})
 _CALIBRATING_CODES = frozenset({"ATT_SS_NEW", "MEM_T_LRN"})
@@ -51,7 +53,7 @@ _CALIBRATING_CODES = frozenset({"ATT_SS_NEW", "MEM_T_LRN"})
 _STATUS_BY_CODES = (
     ("error", ERROR_CODES),
     ("hardware_check", HARDWARE_CODES),
-    ("wick_renewal_needed", WICK_CODES),
+    ("recalibration_due", RECALIBRATION_CODES),
     ("max_moisture_required", MAX_MOISTURE_CODES),
     ("calibrating", _CALIBRATING_CODES),
 )

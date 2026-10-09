@@ -120,7 +120,7 @@ async def test_entity_ids_names_and_states(hass):
         for s in (
             "battery_status",
             "max_moisture_calibration",
-            "wick_status",
+            "max_moisture_recalibration",
             "hardware_status",
         )
     } | {
@@ -306,7 +306,7 @@ async def test_diagnostic_and_disabled_sensors(hass):
         "hardware_problem",
     }
     assert hass.states.get("sensor.front_cloud_upload_delay") is None
-    assert hass.states.get("binary_sensor.front_wick_status") is None
+    assert hass.states.get("binary_sensor.front_max_moisture_recalibration") is None
     assert hass.states.get("sensor.front_avg_7_day_sun") is None
     assert (
         hass.states.get("binary_sensor.front_max_moisture_calibration").state == "off"
@@ -386,12 +386,27 @@ async def test_max_moisture_code_raises_a_repair_until_it_clears(hass):
     entry = _entry(hass)
     await _setup_with(hass, entry, {1001: _max_moisture_reading()})
     issue = ir.async_get(hass).async_get_issue(
-        const.DOMAIN, f"max_moisture_{entry.entry_id}_AAA111"
+        const.DOMAIN, f"max_moisture_required_{entry.entry_id}_AAA111"
     )
     assert issue.translation_key == "max_moisture_required"
     assert issue.translation_placeholders == {"name": "Front", "serial": "AAA111"}
     assert issue.severity is ir.IssueSeverity.WARNING
     assert not issue.is_fixable
+
+    await _poll(entry, {1001: _reading()})
+    assert _issues(hass) == []
+
+
+async def test_expired_calibration_raises_its_own_repair(hass):
+    entry = _entry(hass)
+    reading = replace(_reading(), next_action=frozenset({"DW_RENEW", "DW_M_LOW1"}))
+    await _setup_with(hass, entry, {1001: reading})
+    assert _issues(hass) == [
+        (const.DOMAIN, f"max_moisture_recalibration_{entry.entry_id}_AAA111")
+    ]
+    issue = ir.async_get(hass).async_get_issue(*_issues(hass)[0])
+    assert issue.translation_key == "max_moisture_recalibration"
+    assert issue.translation_placeholders == {"name": "Front", "serial": "AAA111"}
 
     await _poll(entry, {1001: _reading()})
     assert _issues(hass) == []
