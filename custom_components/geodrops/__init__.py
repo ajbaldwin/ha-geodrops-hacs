@@ -7,16 +7,12 @@ from aiogeodrops import GeoDropsClient, GeoDropsCredentialsError
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers import device_registry as dr, issue_registry as ir
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from . import const
 from .const import DeviceConfig
-from .coordinator import (
-    GeoDropsConfigEntry,
-    GeoDropsCoordinator,
-    access_denied_issue_id,
-)
+from .coordinator import GeoDropsConfigEntry, GeoDropsCoordinator, delete_entry_issues
 
 PLATFORMS = [Platform.BINARY_SENSOR, Platform.SENSOR]
 
@@ -54,8 +50,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: GeoDropsConfigEntry) ->
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: GeoDropsConfigEntry) -> None:
-    """Clear the entry's repair issue when the entry is deleted."""
-    ir.async_delete_issue(hass, const.DOMAIN, access_denied_issue_id(entry.entry_id))
+    """Clear the entry's repair issues when the entry is deleted."""
+    delete_entry_issues(hass, entry.entry_id)
 
 
 async def async_remove_config_entry_device(

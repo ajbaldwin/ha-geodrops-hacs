@@ -177,10 +177,10 @@ Each probe becomes one Home Assistant device with 27 sensors:
 | Reading Quality Depth 2 | Reading-quality classification at depth sensor 2 |
 | Reading Quality Depth 3 | Reading-quality classification at depth sensor 3 |
 | Reading Quality | GeoDrops' overall reading-quality classification |
-| Probe Health | What the probe needs, from GeoDrops' action codes: OK, Calibrating, Max Moisture Required, Wick Renewal Needed, Hardware Check or Error |
+| Probe Health | What the probe needs, from GeoDrops' action codes: OK, Calibrating, Max Moisture Required, Recalibration Due, Hardware Check or Error |
 | Next Action Codes | GeoDrops' raw action codes (e.g. `ATT_DW_NEW, DW_M_LOW12`), including ones Probe Health doesn't recognize |
-| Max Moisture Calibration | Problem when GeoDrops asks you to run the max-moisture (deep water) test in its app; moisture stays `unknown` until you do (binary sensor) |
-| Wick Status | Problem when GeoDrops says the probe's wick needs replacing (binary sensor) |
+| Max Moisture Calibration | Problem when GeoDrops asks you to run the max-moisture (deep water) test in its app; moisture stays `unknown` until you do. Also raised as a repair (binary sensor) |
+| Max Moisture Recalibration | Problem when the probe's max-moisture calibration has expired (75 days after the last one) and GeoDrops asks for the test to be run again; moisture keeps reporting meanwhile, at reduced quality. Also raised as a repair. Formerly Wick Status (binary sensor) |
 | Hardware Status | Problem when GeoDrops asks for a hardware check or reports a hardware error (binary sensor) |
 | Battery | Probe battery level (%) |
 | Battery Status | Problem when GeoDrops flags the battery as poor quality (binary sensor) |
@@ -212,9 +212,9 @@ warning is written to the Home Assistant log (once, until it reports again).
 
 Battery, Battery Status, Battery Voltage, Signal Strength, Cloud Upload Delay, Last
 Reading, Reading Quality, Reading Quality Depth 1–3, Probe Health, Next Action Codes, Watering Confidence and the Max
-Moisture Calibration, Wick Status and Hardware Status sensors are **diagnostic** sensors: they are listed under *Diagnostic* on the device page and left off
+Moisture Calibration, Max Moisture Recalibration and Hardware Status sensors are **diagnostic** sensors: they are listed under *Diagnostic* on the device page and left off
 auto-generated dashboards. Battery Voltage, Signal Strength, Cloud Upload Delay,
-Avg. 7-Day Sun, Next Action Codes, Battery Status, Wick Status and Hardware Status are **disabled by default** on newly added probes; enable them from the device page if you want
+Avg. 7-Day Sun, Next Action Codes, Battery Status, Max Moisture Recalibration and Hardware Status are **disabled by default** on newly added probes; enable them from the device page if you want
 them. The
 Reading Quality sensors stay enabled, because automations and other integrations use
 them to decide whether a moisture reading can be trusted.
@@ -229,15 +229,24 @@ against) are stable keys:
 | --- | --- |
 | Moisture State | `dry` (Dry), `dry_plus` (Dry+), `moist` (Moist), `moist_plus` (Moist+), `wet` (Wet), `wet_plus` (Wet+) |
 | Reading Quality, Reading Quality Depth 1–3 | `bad` (Bad), `poor` (Poor), `good` (Good), `training` (Training) |
-| Probe Health | `ok` (OK), `calibrating` (Calibrating), `max_moisture_required` (Max Moisture Required), `wick_renewal_needed` (Wick Renewal Needed), `hardware_check` (Hardware Check), `error` (Error) |
+| Probe Health | `ok` (OK), `calibrating` (Calibrating), `max_moisture_required` (Max Moisture Required), `recalibration_due` (Recalibration Due), `hardware_check` (Hardware Check), `error` (Error) |
 
 A value GeoDrops doesn't classify is Home Assistant's own `unknown`.
 
 Probe Health shows the most urgent of a probe's codes, in the order Error, Hardware
-Check, Wick Renewal Needed, Max Moisture Required, Calibrating. Codes it
-doesn't recognize, and GeoDrops' notes such as `DW_M_LOW` (one depth reads
-lower than the others, even in wet soil), leave it at OK; Next Action Codes
-shows them. GeoDrops doesn't document these codes: their meanings come from
+Check, Recalibration Due, Max Moisture Required, Calibrating. Codes it
+doesn't recognize, and GeoDrops' notes, leave it at OK; Next Action Codes
+shows them. The notes seen so far, where the digits name the depths:
+
+- `DW_M_LOW`: one depth reads lower than the others, even in wet soil.
+- `LAX_M_EVA`: evaporation lag.
+- `CHK_M_LOW`: very low moisture at that depth. Usually the soil is dry and it
+  clears once watered; a brief one just before a hardware error is a GeoDrops
+  glitch.
+- `MEM_DW_BAD`: the max-moisture test didn't take at that depth. If it has to
+  be rerun, GeoDrops also asks for the test, which raises the repair.
+
+ GeoDrops doesn't document these codes: their meanings come from
 comparing them with readings across GeoDrops' probes.
 
 ### Automation examples
@@ -327,6 +336,14 @@ Check that:
 
 GeoDrops keeps retrying, and the repair clears itself on the first query that
 succeeds.
+
+**A "needs its max-moisture calibration" or "max-moisture calibration has
+expired" repair** (Settings → System → Repairs). GeoDrops wants the
+max-moisture (deep water) test run on that probe: for the first time, in
+which case its moisture sensors stay `unknown` until it is, or again, which
+it asks for 75 days after the last one. Run the test from the probe's prompt
+in the GeoDrops app. The repair clears itself once GeoDrops stops asking,
+which can take a few hours to show up.
 
 **GeoDrops asks to re-authenticate.** Google stopped accepting the key. See
 [Rotating the key or changing project](#rotating-the-key-or-changing-project).

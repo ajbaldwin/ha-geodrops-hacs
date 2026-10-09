@@ -4,8 +4,8 @@
       "max_moisture_required": {
         "default": "mdi:water-plus"
       },
-      "wick_renewal": {
-        "default": "mdi:wrench"
+      "max_moisture_recalibration": {
+        "default": "mdi:calendar-refresh"
       }
     },
     "sensor": {
@@ -44,7 +44,7 @@
           "ok": "mdi:check-circle",
           "calibrating": "mdi:progress-clock",
           "max_moisture_required": "mdi:water-plus",
-          "wick_renewal_needed": "mdi:wrench",
+          "recalibration_due": "mdi:calendar-refresh",
           "hardware_check": "mdi:alert",
           "error": "mdi:close-circle"
         }
